@@ -143,15 +143,15 @@ static struct misc* read_misc_config(FILE* stream, int* line) {
 	if (errors)
 		goto error;
 
-	if (lstat(log_path, &sb))
-		goto error;
-
-	if (!((sb.st_mode & (S_IWOTH)) ||
-			(sb.st_mode & (S_IWGRP)))
-			|| !strcmp(log_path, "/") || !strcmp(log_path, "/system")) {
-		LOGE("Invalid argument: %s is writeable?", log_path);
+	if (lstat(log_path, &sb)) {
+    	LOGE("Failed to get info about \"%s\": %s.", log_path, strerror(errno));
 		goto error;
 	}
+
+    if (access(log_path, W_OK)) {
+    	LOGE("Failed to access \"%s\": %s.", log_path, strerror(errno));
+    	goto error;
+    }
 
 	if (atol(log_num) < 0) {
 		LOGE("Invalid argument.");
