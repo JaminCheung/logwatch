@@ -25,10 +25,7 @@ static void dump_config(struct config *config) {
 	LOGD("%s: %s", config->kmsg->is_enable.name, config->kmsg->is_enable.value);
 	LOGD("%s: %s", config->kmsg->prior.name, config->kmsg->prior.value);
 	LOGD("%s: %s", config->kmsg->fifo_size.name, config->kmsg->fifo_size.value);
-	LOGD("%s: %s", config->logcat->is_enable_system_log.name, config->logcat->is_enable_system_log.value);
-	LOGD("%s: %s", config->logcat->is_enable_main_log.name, config->logcat->is_enable_main_log.value);
-	LOGD("%s: %s", config->logcat->is_enable_radio_log.name, config->logcat->is_enable_radio_log.value);
-	LOGD("%s: %s", config->logcat->is_enable_events_log.name, config->logcat->is_enable_events_log.value);
+	LOGD("%s: %s", config->logcat->is_enable.name, config->logcat->is_enable.value);
 	LOGD("%s: %s", config->logcat->fifo_size.name, config->logcat->fifo_size.value);
 	LOGD("%s: %s", config->logcat->prior.name, config->logcat->prior.value);
 	LOGD("===================================");
@@ -262,10 +259,7 @@ static struct logcat* read_logcat_config(FILE* stream, int* line) {
 	int errors = 0;
 	int end = 0;
 
-	char* is_enable_system_log = NULL;
-	char* is_enable_main_log = NULL;
-	char* is_enable_radio_log = NULL;
-	char* is_enable_events_log = NULL;
+	char* is_enable = NULL;
 	char* fifo_size = NULL;
 	char* prior = NULL;
 
@@ -273,31 +267,10 @@ static struct logcat* read_logcat_config(FILE* stream, int* line) {
 		if (!strcmp(pos, "}")) {
 			end = 1;
 			break;
-		} else if (!strncmp(pos, "is_enable_system_log=", 21)) {
-			is_enable_system_log = strdup(get_value(pos));
-			if (!is_enable_system_log) {
-				LOGE("Failed to parse line: %d: is_enable_system_log=?", *line);
-				errors++;
-				break;
-			}
-		} else if (!strncmp(pos, "is_enable_main_log=", 19)) {
-			is_enable_main_log = strdup(get_value(pos));
-			if (!is_enable_main_log) {
-				LOGE("Failed to parse line: %d: is_enable_main_log=?", *line);
-				errors++;
-				break;
-			}
-		} else if (!strncmp(pos, "is_enable_radio_log=", 20)) {
-			is_enable_radio_log = strdup(get_value(pos));
-			if (!is_enable_radio_log) {
-				LOGE("Failed to parse line: %d: is_enable_radio_log=?", *line);
-				errors++;
-				break;
-			}
-		} else if (!strncmp(pos, "is_enable_events_log=", 21)) {
-			is_enable_events_log = strdup(get_value(pos));
-			if (!is_enable_events_log) {
-				LOGE("Failed to parse line: %d: is_enable_events_log=?", *line);
+		} else if (!strncmp(pos, "is_enable=", 10)) {
+			is_enable = strdup(get_value(pos));
+			if (!is_enable) {
+				LOGE("Failed to parse line: %d: is_enable_=?", *line);
 				errors++;
 				break;
 			}
@@ -330,11 +303,7 @@ static struct logcat* read_logcat_config(FILE* stream, int* line) {
 	if (errors)
 		goto error;
 
-	if ((strcmp(is_enable_system_log, "yes") && strcmp(is_enable_system_log, "no"))
-			||(strcmp(is_enable_main_log, "yes") && strcmp(is_enable_main_log, "no"))
-			|| (strcmp(is_enable_radio_log, "yes") && strcmp(is_enable_radio_log, "no"))
-			|| (strcmp(is_enable_events_log, "yes") && strcmp(is_enable_events_log, "no"))
-			|| (strcmp(is_enable_events_log, "yes") && strcmp(is_enable_events_log, "no"))
+	if ((strcmp(is_enable, "yes") && strcmp(is_enable, "no"))
 			|| (atol(fifo_size) < 0)
 			|| (atol(prior) < 0 || atol(prior) > 6)) {
 		LOGE("Invalid argument.");
@@ -342,17 +311,8 @@ static struct logcat* read_logcat_config(FILE* stream, int* line) {
 	}
 
 	config = (struct logcat *)malloc(sizeof(struct logcat));
-	config->is_enable_system_log.name = strdup("Is watch logcat system");
-	config->is_enable_system_log.value = is_enable_system_log;
-
-	config->is_enable_main_log.name = strdup("Is watch logcat main");
-	config->is_enable_main_log.value = is_enable_main_log;
-
-	config->is_enable_radio_log.name = strdup("Is watch logcat radio");
-	config->is_enable_radio_log.value = is_enable_radio_log;
-
-	config->is_enable_events_log.name = strdup("Is watch logcat events");
-	config->is_enable_events_log.value = is_enable_events_log;
+	config->is_enable.name = strdup("Is watch logcat");
+	config->is_enable.value = is_enable;
 
 	config->fifo_size.name = strdup("Android logcat ring buffer size");
 	config->fifo_size.value = fifo_size;
@@ -362,14 +322,8 @@ static struct logcat* read_logcat_config(FILE* stream, int* line) {
 	return config;
 
 error:
-	if (is_enable_system_log)
-		free(is_enable_system_log);
-	if (is_enable_main_log)
-		free(is_enable_main_log);
-	if (is_enable_radio_log)
-		free(is_enable_radio_log);
-	if (is_enable_events_log)
-		free(is_enable_events_log);
+	if (is_enable)
+		free(is_enable);
 	if (fifo_size)
 		free(fifo_size);
 	if (prior)
@@ -392,25 +346,10 @@ static void install_config(struct config* config, struct logwatch_data* logwatch
 	logwatch->kmsg_prior = atol(config->kmsg->prior.value);
 
 	/* install logcat configs*/
-	if (!strcmp(config->logcat->is_enable_system_log.value, "yes"))
-		logwatch->is_enable_system_log = 1;
+	if (!strcmp(config->logcat->is_enable.value, "yes"))
+		logwatch->is_enable_logcat = 1;
 	else
-		logwatch->is_enable_system_log = 0;
-
-	if (!strcmp(config->logcat->is_enable_main_log.value, "yes"))
-		logwatch->is_enable_main_log = 1;
-	else
-		logwatch->is_enable_main_log = 0;
-
-	if (!strcmp(config->logcat->is_enable_radio_log.value, "yes"))
-		logwatch->is_enable_radio_log = 1;
-	else
-		logwatch->is_enable_radio_log = 0;
-
-	if (!strcmp(config->logcat->is_enable_events_log.value, "yes"))
-		logwatch->is_enable_events_log = 1;
-	else
-		logwatch->is_enable_events_log = 0;
+		logwatch->is_enable_logcat = 0;
 
 	logwatch->logcat_size = atol(config->logcat->fifo_size.value);
 	logwatch->logcat_prior = atoi(config->logcat->prior.value);
@@ -427,10 +366,7 @@ static void install_default_config(struct logwatch_data* logwatch) {
 	logwatch->kmsg_size = KMSG_SIZE_DEF;
 	logwatch->kmsg_prior = KMSG_PRIOR_DEF;
 
-	logwatch->is_enable_system_log = LOGCAT_SYSTEM_ENABLE_DEF;
-	logwatch->is_enable_main_log = LOGCAT_MAIN_ENABLE_DEF;
-	logwatch->is_enable_radio_log = LOGCAT_RADIO_ENABLE_DEF;
-	logwatch->is_enable_events_log = LOGCAT_EVENTS_ENABLE_DEF;
+	logwatch->is_enable_logcat = LOGCAT_ENABLE_DEF;
 	logwatch->logcat_size = LOGCAT_SIZE_DEF;
 	logwatch->logcat_prior = LOGCAT_PRIOR_DEF;
 }

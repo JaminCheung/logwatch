@@ -14,10 +14,7 @@ struct object {
 };
 
 struct logcat {
-	struct object	is_enable_system_log;
-	struct object	is_enable_main_log;
-	struct object	is_enable_radio_log;
-	struct object	is_enable_events_log;
+	struct object	is_enable;
 	struct object	fifo_size;
 	struct object	prior;
 };
@@ -67,25 +64,10 @@ struct logwatch_data {
 #define KERN_DEBUG		7
 #define KMSG_PRIOR_DEF	KERN_DEBUG
 
-	pthread_t	logcat_system_pid;
-	int		logcat_system_fd;
-	int 	is_enable_system_log;
-#define LOGCAT_SYSTEM_ENABLE_DEF	1
-
-	pthread_t	logcat_main_pid;
-	int		logcat_main_fd;
-	int 	is_enable_main_log;
-#define LOGCAT_MAIN_ENABLE_DEF	1
-
-	pthread_t	logcat_radio_pid;
-	int		logcat_radio_fd;
-	int 	is_enable_radio_log;
-#define LOGCAT_RADIO_ENABLE_DEF	1
-
-	pthread_t	logcat_events_pid;
-	int		logcat_events_fd;
-	int 	is_enable_events_log;
-#define LOGCAT_EVENTS_ENABLE_DEF	1
+	pthread_t	logcat_pid;
+	int		logcat_fd;
+	int 	is_enable_logcat;
+#define LOGCAT_ENABLE_DEF	1
 
 	unsigned long logcat_size;
 #define LOGCAT_SIZE_DEF	(1024)

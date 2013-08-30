@@ -9,6 +9,8 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <sys/klog.h>
+#include <sys/wait.h>
+#include <signal.h>
 
 #include "logwatch.h"
 #include "configure.h"
@@ -31,10 +33,7 @@ static void dump_logwatch_data(struct logwatch_data* logwatch) {
 	LOGD("enable kernel message: %d", logwatch->is_enable_kmsg);
 	LOGD("kernle message size: %ld", logwatch->kmsg_size);
 	LOGD("kernel priority: %d", logwatch->kmsg_prior);
-	LOGD("enable logcat system: %d", logwatch->is_enable_system_log);
-	LOGD("enable loagcat main: %d", logwatch->is_enable_main_log);
-	LOGD("enable logcat radio: %d", logwatch->is_enable_radio_log);
-	LOGD("enable logcat events: %d", logwatch->is_enable_events_log);
+	LOGD("enable logcat: %d", logwatch->is_enable_logcat);
 	LOGD("logcat size: %ld", logwatch->logcat_size);
 	LOGD("logcat priority: %d", logwatch->logcat_prior);
 	LOGD("===================================");
@@ -98,7 +97,7 @@ static int init_work(struct logwatch_data* logwatch) {
 	/* create system log folder */
 	chdir(log_path);
 	if (!stat("ingenic-log", &sb) && S_ISDIR(sb.st_mode)) {
-		LOGW("system log foler already exist.");
+		LOGW("\"%s/ingenic-log\" already exist.", logwatch->log_path);
 	} else {
 		retval = mkdir("ingenic-log", S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP \
 				 | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH);
@@ -128,11 +127,11 @@ static int init_work(struct logwatch_data* logwatch) {
 	}
 	closedir(stream);
 #if DEBUG
-	LOGD("===================================\n");
+	LOGD("===================================");
 	LOGD("Dump exist log.");
 	for (i = 0; i < log_count; i++)
 		LOGD("%d\n", log_array[i]);
-	LOGD("===================================\n");
+	LOGD("===================================");
 #endif
 	i = log_count;
 	while (i > 0) {
@@ -146,11 +145,11 @@ static int init_work(struct logwatch_data* logwatch) {
 		i--;
 	}
 #if DEBUG
-	LOGD("===================================\n");
+	LOGD("===================================");
 	LOGD("Dump sorted log.");
 	for (i = 0; i < log_count; i++)
 		LOGD("%d\n", log_array[i]);
-	LOGD("===================================\n");
+	LOGD("===================================");
 #endif
 	chdir("ingenic-log");
 	for (i = logwatch->log_num - 1; i < log_count; i++) {
@@ -312,66 +311,15 @@ static void* start_watch_kmsg(void* param) {
 	return NULL;
 }
 
-static void* start_watch_system_logcat(void *param) {
-	struct logwatch_data* logwatch = (struct logwatch_data *)param;
-	char *buf;
-
-	asprintf(&buf, "logcat -b system -v time *:%s > logcat-system", logcat_priority[logwatch->logcat_prior]);
-
-	for(;;) {
-		if (system(buf) < 0) {
-			LOGE("Failed to invoke system logcat.");
-			break;
-		}
-		msleep(100);
-	}
-	free(buf);
-	return NULL;
-}
-
-static void* start_watch_main_logcat(void* param) {
+static void* start_watch_logcat(void *param) {
 	struct logwatch_data* logwatch = (struct logwatch_data *)param;
 	char* buf;
 
-	asprintf(&buf, "logcat -b main -v time *:%s > logcat-main", logcat_priority[logwatch->logcat_prior]);
+	asprintf(&buf, "logcat -v time *:%s > logcat", logcat_priority[logwatch->logcat_prior]);
 
 	for(;;) {
 		if (system(buf) < 0) {
-			LOGE("Failed to invoke main logcat.");
-			break;
-		}
-		msleep(100);
-	}
-	free(buf);
-	return NULL;
-}
-
-static void* start_watch_radio_logcat(void* param) {
-	struct logwatch_data* logwatch = (struct logwatch_data *)param;
-	char* buf;
-
-	asprintf(&buf, "logcat -b radio -v time *:%s > logcat-radio", logcat_priority[logwatch->logcat_prior]);
-
-	for(;;) {
-		if (system(buf) < 0) {
-			LOGE("Failed to invoke radio logcat.");
-			break;
-		}
-		msleep(100);
-	}
-	free(buf);
-	return NULL;
-}
-
-static void* start_watch_events_logcat(void* param) {
-	struct logwatch_data* logwatch = (struct logwatch_data *)param;
-	char* buf;
-
-	asprintf(&buf, "logcat -b events -v time *:%s > logcat-events", logcat_priority[logwatch->logcat_prior]);
-
-	for(;;) {
-		if (system(buf) < 0) {
-			LOGE("Failed to invoke events logcat.");
+			LOGE("Failed to invoke logcat.");
 			break;
 		}
 		msleep(100);
@@ -411,72 +359,51 @@ static int do_work(struct logwatch_data* logwatch) {
 		}
 	}
 
-	if (logwatch->is_enable_system_log) {
-		logwatch->logcat_system_fd = open("logcat-system", O_RDWR | O_SYNC | O_CREAT | O_APPEND,
+	if (logwatch->is_enable_logcat) {
+		logwatch->logcat_fd = open("logcat", O_RDWR | O_SYNC | O_CREAT | O_APPEND,
 				S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-		if (logwatch->logcat_system_fd < 0) {
-			LOGE("Failed to open logcat-system: %s.", strerror(errno));
+		if (logwatch->logcat_fd < 0) {
+			LOGE("Failed to open logcat: %s.", strerror(errno));
 			return -1;
 		}
-		retval = pthread_create(&logwatch->logcat_system_pid, &logwatch->attr, start_watch_system_logcat, (void *)logwatch);
+		retval = pthread_create(&logwatch->logcat_pid, &logwatch->attr, start_watch_logcat, (void *)logwatch);
 		if (retval < 0) {
-			LOGE("Failed to create thread to watch system logcat.");
+			LOGE("Failed to create thread to watch logcat.");
 			return -1;
 		}
 	}
 
-	if (logwatch->is_enable_main_log) {
-		logwatch->logcat_main_fd = open("logcat-main", O_RDWR | O_SYNC | O_CREAT | O_APPEND,
-				S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-		if (logwatch->logcat_main_fd < 0) {
-			LOGE("Failed to open logcat-main: %s.", strerror(errno));
-			return -1;
-		}
-
-		retval = pthread_create(&logwatch->logcat_main_pid, &logwatch->attr, start_watch_main_logcat, (void *)logwatch);
-		if (retval < 0) {
-			LOGE("Failed to create thread to watch main logcat.");
-			return -1;
-		}
-	}
-
-	if (logwatch->is_enable_radio_log) {
-		logwatch->logcat_radio_fd = open("logcat-radio", O_RDWR | O_SYNC | O_CREAT | O_APPEND,
-				S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-		if (logwatch->logcat_radio_fd < 0) {
-			LOGE("Failed to open logcat-radio: %s.", strerror(errno));
-			return -1;
-		}
-
-		retval = pthread_create(&logwatch->logcat_radio_pid, &logwatch->attr, start_watch_radio_logcat, (void *)logwatch);
-		if (retval < 0) {
-			LOGE("Failed to create thread to watch radio logcat.");
-			return -1;
-		}
-	}
-
-	if (logwatch->is_enable_events_log) {
-		logwatch->logcat_events_fd = open("logcat-events", O_RDWR | O_SYNC | O_CREAT | O_APPEND,
-				S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-		if (logwatch->logcat_events_fd < 0) {
-			LOGE("Failed to open logcat-events: %s.", strerror(errno));
-			return -1;
-		}
-
-		retval = pthread_create(&logwatch->logcat_events_pid, &logwatch->attr, start_watch_events_logcat, (void *)logwatch);
-		if (retval < 0) {
-			LOGE("Failed to create thread to watch events logcat.");
-			return -1;
-		}
-	}
 	return 0;
+}
+
+static void signal_handler(int signum) {
+	int errno_save = errno;
+//TODO:fix me
+	abort();
+	errno = errno_save;
+}
+
+static void register_signal_handler() {
+	struct sigaction action, old_action;
+
+	action.sa_handler = signal_handler;
+	sigemptyset(&action.sa_mask);
+	action.sa_flags = 0;
+
+	sigaction(SIGINT, NULL, &old_action);
+	if (old_action.sa_handler != SIG_IGN)
+	    sigaction(SIGINT, &action, NULL);
 }
 
 int main (int argc, char* argv[])
 {
 	int retval;
 
-	struct logwatch_data *logwatch_data = (struct logwatch_data *)malloc(sizeof(struct logwatch_data));
+	struct logwatch_data *logwatch_data;
+
+	logwatch_data = (struct logwatch_data *)malloc(sizeof(struct logwatch_data));
+
+	register_signal_handler();
 
 	load_configure("/system/etc/logwatch.conf", logwatch_data);
 
