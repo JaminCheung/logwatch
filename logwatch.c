@@ -21,8 +21,6 @@
 #define LOG_TAG "logwatch--->logwatch"
 #endif
 
-#define ENTRY_MAX_NUM	1024
-
 const char* const logcat_priority[7] = {"S", "F", "E", "W", "I", "D", "V"};
 
 static void dump_logwatch_data(struct logwatch_data* logwatch) {
@@ -86,13 +84,15 @@ static int init_work(struct logwatch_data* logwatch) {
 	struct dirent *entry;
 	struct stat sb;
 	char* log_path = logwatch->log_path;
-
-	int log_array[ENTRY_MAX_NUM] = {0};
+	int *log_array = NULL;
 	int log_count = 0;
 	int i = 0;
 	int j = 0;
 	int temp = 0;
 	char *buf = NULL;
+
+	log_array = (int *)malloc(sizeof(int) * logwatch->log_num);
+	memset(log_array, 0 , sizeof(int) * logwatch->log_num);
 
 	/* create system log folder */
 	chdir(log_path);
@@ -168,6 +168,8 @@ static int init_work(struct logwatch_data* logwatch) {
 	}
 	logwatch->cur_log_path = strdup(buf);
 	free(buf);
+
+	free(log_array);
 	return 0;
 }
 
@@ -272,21 +274,23 @@ static void* start_watch_kmsg(void* param) {
 
 	struct logwatch_data* logwatch = (struct logwatch_data *)param;
 
+	/*
+	 * set kernel printk output level
+	 */
 	print_fd = open("/proc/sys/kernel/printk", O_RDWR | O_SYNC);
 	if (print_fd < 0) {
 		LOGE( "Failed to open /proc/sys/kernel/printk: %s.", strerror(errno));
-		//return NULL;
+		//return NULL; just use default
+	} else {
+	    asprintf(&buf, "%d\n", logwatch->kmsg_prior);
+	    retval = write(print_fd, buf, 2);
+	    if (retval < 0)
+	        LOGE("Failed to write /proc/sys/kernel/printk: %s.", strerror(errno));
+
+	    close(print_fd);
+
+	    free(buf);
 	}
-
-	asprintf(&buf, "%d\n", logwatch->kmsg_prior);
-	retval = write(print_fd, buf, 2);
-	if (retval < 0)
-		LOGE("Failed to write /proc/sys/kernel/printk: %s.", strerror(errno));
-
-	if (print_fd > 0)
-		close(print_fd);
-
-	free(buf);
 
 	src_fd = open("/proc/kmsg", O_RDONLY);
 	if (src_fd < 0) {

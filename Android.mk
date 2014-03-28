@@ -8,7 +8,10 @@ LOCAL_SRC_FILES := \
 
 LOCAL_MODULE := logwatch
 
-LOCAL_CFLAGS += -g -DDEBUG
+##########################
+# enable it open debug
+##########################
+#LOCAL_CFLAGS += -g -DDEBUG
 
 LOCAL_C_INCLUDES += $(KERNEL_HEADERS)
 LOCAL_SHARED_LIBRARIES += libcutils
