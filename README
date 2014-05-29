@@ -1,0 +1,48 @@
+ #
+ #  Copyright (C) 2013, Zhang YanMing <jamincheung@126.com>
+ #
+ #  ingenic log record tool
+ #
+ #  This program is free software; you can redistribute it and/or modify it
+ #  under  the terms of the GNU General  Public License as published by the
+ #  Free Software Foundation;  either version 2 of the License, or (at your
+ #  option) any later version.
+ #
+ #  You should have received a copy of the GNU General Public License along
+ #  with this program; if not, write to the Free Software Foundation, Inc.,
+ #  675 Mass Ave, Cambridge, MA 02139, USA.
+ #
+ #
+
+ What is this
+ ==============
+ logwatch记录kernel以及android的系统log, 并将log保存在文件中。记录方
+ 式为单调加一, 即以递加的数字命名(1, 2, 3...). 通过配置文件可以设置log
+ 记录的数量以及log存储位置等信息, 具体使用方式见logwatch.conf中的中文注释。
+ log会被保存在ingenic-log的文件夹下, 数字编码最大的为本次开机至今的log,
+ 次大的为上次系统运行的log, 依次类推.
+
+ How to use
+ ==============
+ 1. 在android环境下编译
+    cd logwatch
+    mm -B
+
+ 2. 将编译出的logwatch放进系统
+    adb push logwatch /system/bin/
+
+ 3. 将配置好的配置文件放入系统
+    adb push logwatch.conf /system/etc/
+
+ 4. 修改init.rc增加开机服务运行logwatch
+    打开init.rc
+    加入以下内容("+"标记)
++    service logwatch /system/bin/logwatch
++    class main
++    oneshot
+
+    service ueventd /sbin/ueventd
+    class core
+    critical
+
+ 5. 重新编译(打包)boot.img
