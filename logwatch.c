@@ -27,15 +27,14 @@
 #include <sys/klog.h>
 #include <sys/wait.h>
 #include <signal.h>
-
-#include "logwatch.h"
-#include "configure.h"
-
+#include <android/log.h>
 #include <cutils/log.h>
 #ifdef LOG_TAG
 #undef LOG_TAG
 #define LOG_TAG "logwatch--->logwatch"
 #endif
+#include "logwatch.h"
+#include "configure.h"
 
 const char* const logcat_priority[7] = {"S", "F", "E", "W", "I", "D", "V"};
 

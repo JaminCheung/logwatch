@@ -17,6 +17,26 @@
 #ifndef LOGWATCH_H_
 #define LOGWATCH_H_
 
+#ifndef LOGV
+#define LOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, __VA_ARGS__)
+#endif
+
+#ifndef LOGD
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG , LOG_TAG, __VA_ARGS__)
+#endif
+
+#ifndef LOGI
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO  , LOG_TAG, __VA_ARGS__)
+#endif
+
+#ifndef LOGW
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN  , LOG_TAG, __VA_ARGS__)
+#endif
+
+#ifndef LOGE
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR  , LOG_TAG, __VA_ARGS__)
+#endif
+
 struct object {
 	const char		*name;
 	char			*value;
@@ -49,7 +69,7 @@ struct logwatch_data {
 	char*	log_path;
 #define	LOG_PATH_DEF	"/data"
 	int		log_num;
-#define LOG_NUM_DEF		10
+#define LOG_NUM_DEF		3
 
 	pthread_attr_t attr;
 	char* cur_log_path;

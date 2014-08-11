@@ -24,14 +24,13 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <pthread.h>
-
-#include "logwatch.h"
-
+#include <android/log.h>
 #include <cutils/log.h>
 #ifdef LOG_TAG
 #undef LOG_TAG
 #define LOG_TAG "logwatch--->configure"
 #endif
+#include "logwatch.h"
 
 static void dump_config(struct config *config) {
 	LOGD("===================================");
