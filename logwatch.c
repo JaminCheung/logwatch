@@ -31,7 +31,11 @@
 #include <cutils/log.h>
 #ifdef LOG_TAG
 #undef LOG_TAG
+#ifdef COLOR
+#define LOG_TAG "\e[0;91mlogwatch--->logwatch\e[0m"
+#else
 #define LOG_TAG "logwatch--->logwatch"
+#endif
 #endif
 #include "logwatch.h"
 #include "configure.h"
@@ -41,6 +45,7 @@ const char* const logcat_priority[7] = {"S", "F", "E", "W", "I", "D", "V"};
 static void dump_logwatch_data(struct logwatch_data* logwatch) {
 	LOGD("===================================");
 	LOGD("Dump logwatch data.");
+	LOGD("enable logwatch: %d", logwatch->is_enable_logwatch);
 	LOGD("system log path: %s", logwatch->log_path);
 	LOGD("system log number: %d", logwatch->log_num);
 	LOGD("enable kernel message: %d", logwatch->is_enable_kmsg);
@@ -99,30 +104,53 @@ static int init_work(struct logwatch_data* logwatch) {
 	struct dirent *entry;
 	struct stat sb;
 	char* log_path = logwatch->log_path;
-	int *log_array = NULL;
-	int log_count = 0;
-	int i = 0;
-	int j = 0;
-	int temp = 0;
+	char** folder_array = NULL;
+	char** log_array = NULL;
+	char** serial_char_array = NULL;
+	unsigned long* serial_int_array = NULL;
+	unsigned long folder_count = 0;
+	unsigned long log_count = 0;
+	unsigned long i = 0;
+	unsigned long j = 0;
+	unsigned long temp = 0;
 	char *buf = NULL;
+	struct tm *ptime = NULL;
+	time_t the_time;
+	char* start = NULL;
 
-	log_array = (int *)malloc(sizeof(int) * logwatch->log_num);
-	memset(log_array, 0 , sizeof(int) * logwatch->log_num);
+	folder_array = (char**)malloc(sizeof(char*) * (logwatch->log_num + 200));
+	memset(folder_array, 0 , sizeof(char*) * (logwatch->log_num + 200));
 
-	/* create system log folder */
+	log_array = (char**)malloc(sizeof(char*) * (logwatch->log_num + 100));
+	memset(log_array, 0 , sizeof(char*) * (logwatch->log_num + 100));
+
+	serial_char_array = (char**)malloc(sizeof(char*) *
+			(logwatch->log_num + 100));
+	memset(serial_char_array, 0, sizeof(char*) * (logwatch->log_num + 100));
+
+	serial_int_array = (unsigned long*)malloc(sizeof(unsigned long) *
+			(logwatch->log_num + 100));
+	memset(serial_int_array, 0, sizeof(unsigned long) *
+			(logwatch->log_num + 100));
+
+	/*
+	 * create folder to save log
+	 */
 	chdir(log_path);
-	if (!stat("ingenic-log", &sb) && S_ISDIR(sb.st_mode)) {
+	if (!stat(LOG_FOLDER, &sb) && S_ISDIR(sb.st_mode)) {
 		LOGW("\"%s/ingenic-log\" already exist.", logwatch->log_path);
 	} else {
-		retval = mkdir("ingenic-log", S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP \
-				 | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH);
+		retval = mkdir("ingenic-log", S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP \
+				 | S_IROTH);
 		if (retval < 0) {
 			LOGE("Failed to create system log folder: %s.", strerror(errno));
 			return -1;
 		}
 	}
 
-	/* delete system log */
+	/*
+	 * scan ingenic-log to get all log name
+	 */
 	stream = opendir("ingenic-log");
 	if (!stream) {
 		LOGE("Failed to open folder %s: %s.", log_path, strerror(errno));
@@ -135,56 +163,169 @@ static int init_work(struct logwatch_data* logwatch) {
 			if (!strcmp(".", entry->d_name) || !strcmp("..", entry->d_name)) {
 				continue;
 			} else {
-				log_array[log_count++] = atoi(entry->d_name);
+				/*
+				 * Note:
+				 * 		file name like: 1(2014-06-19 23:18:00)
+				 * 		"1": log serial number
+				 * 		"(2014-06-19 23:18:00)": system boot time
+				 */
+				folder_array[folder_count++] = strdup(entry->d_name);
 				continue;
 			}
 		}
 	}
 	closedir(stream);
+
+	chdir(LOG_FOLDER);
+
+	/*
+	 * delete unrecognized folder
+	 */
+	for (i = 0; i < folder_count; i++) {
+		char* tmp_start = NULL;
+		char* tmp_end = NULL;
+		int tmp_length = 0;
+
+		tmp_start = strchr(folder_array[i], '(');
+		tmp_end = strrchr(folder_array[i], ')');
+		tmp_length = strrchr(folder_array[i], ')') -
+				strchr(folder_array[i], '(');
+
+		if (tmp_start == NULL || tmp_end == NULL || tmp_length != 20) {
+			LOGD("Unrecognized folder: %s\n", folder_array[i]);
+			delete_folder(folder_array[i]);
+		} else {
+			log_array[log_count++] = strdup(folder_array[i]);
+		}
+	}
+
+	for (i = 0; i < folder_count; i++) {
+		if (folder_array[i]) {
+			free(folder_array[i]);
+		}
+	}
+	if (folder_array)
+		free(folder_array);
+
 #if DEBUG
 	LOGD("===================================");
 	LOGD("Dump exist log.");
 	for (i = 0; i < log_count; i++)
-		LOGD("%d\n", log_array[i]);
+		LOGD("%s\n", log_array[i]);
 	LOGD("===================================");
 #endif
+
+	/*
+	 * get serial number from log file name
+	 */
+	for (i = 0; i < log_count; i++) {
+		/*
+		 * Note:
+		 * tmp_array used to save log serial number
+		 */
+		start = strchr(log_array[i], '(');
+
+		serial_char_array[i] = (char*)malloc(sizeof(char) *
+				(start - log_array[i] + 1));
+
+		memset(serial_char_array[i], 0, sizeof(char) *
+				(start - log_array[i] + 1));
+
+		strncpy(serial_char_array[i], log_array[i],
+				(unsigned int)(start - log_array[i]));
+
+		serial_char_array[i][start - log_array[i]] = '\0';
+		serial_int_array[i] = strtoul(serial_char_array[i], NULL, 10);
+	}
+
+	/*
+	 * sort log accord serial number
+	 */
 	i = log_count;
 	while (i > 0) {
 		for (j = 0; j < log_count -1; j++) {
-			if (log_array[j] < log_array[j + 1]) {
-				temp = log_array[j];
-				log_array[j] = log_array[j + 1];
-				log_array[j + 1] = temp;
+			if (serial_int_array[j] < serial_int_array[j + 1]) {
+				temp = serial_int_array[j];
+				serial_int_array[j] = serial_int_array[j + 1];
+				serial_int_array[j + 1] = temp;
 			}
 		}
 		i--;
 	}
+
 #if DEBUG
 	LOGD("===================================");
 	LOGD("Dump sorted log.");
-	for (i = 0; i < log_count; i++)
-		LOGD("%d\n", log_array[i]);
+	for (i = 0; i < log_count; i++) {
+		asprintf(&buf, "%lu", serial_int_array[i]);
+		for (j = 0; j < log_count; j++) {
+			if (!strncmp(buf, log_array[j], strlen(serial_char_array[j])))
+				LOGD("%s\n", log_array[j]);
+		}
+		free(buf);
+	}
 	LOGD("===================================");
 #endif
-	chdir("ingenic-log");
+
+	/*
+	 * delete old log base serial number
+	 */
 	for (i = logwatch->log_num - 1; i < log_count; i++) {
-		asprintf(&buf, "%d", log_array[i]);
-		delete_folder(buf);
+		asprintf(&buf, "%lu", serial_int_array[i]);
+		for (j = 0; j < log_count; j++) {
+			if (!strncmp(buf, log_array[j], strlen(serial_char_array[j]))) {
+#if DEBUG
+				LOGD("delete old log: %s\n", log_array[j]);
+#endif
+				delete_folder(log_array[j]);
+			}
+		}
 		free(buf);
 	}
 
-	/* create new system log */
-	asprintf(&buf, "%d", log_array[0] + 1);
-	retval = mkdir(buf, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP \
-			 | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH);
+	/*
+	 * create new log base current system time
+	 */
+	time(&the_time);
+	ptime = localtime(&the_time);
+
+	asprintf(&buf, "%lu(%04d-%02d-%02d %02d:%02d:%02d)", serial_int_array[0] + 1,
+		ptime->tm_year + 1900, ptime->tm_mon + 1, ptime->tm_mday,
+		ptime->tm_hour, ptime->tm_min, ptime->tm_sec);
+
+	retval = mkdir(buf, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IROTH);
 	if (retval < 0) {
 		LOGE("Failed to create log %s: %s.", buf, strerror(errno));
 		return -1;
 	}
 	logwatch->cur_log_path = strdup(buf);
+
+#if DEBUG
+	LOGD("create new log: %s\n", logwatch->cur_log_path);
+#endif
+
 	free(buf);
 
-	free(log_array);
+	/*
+	 * clean work
+	 */
+	for (i = 0; i < log_count; i++) {
+		if (log_array[i])
+			free(log_array[i]);
+
+		if (serial_char_array[i])
+			free(serial_char_array[i]);
+	}
+
+	if (log_array)
+		free(log_array);
+
+	if (serial_char_array)
+		free(serial_char_array);
+
+	if (serial_int_array)
+		free(serial_int_array);
+
 	return 0;
 }
 
@@ -334,7 +475,8 @@ static void* start_watch_logcat(void *param) {
 	struct logwatch_data* logwatch = (struct logwatch_data *)param;
 	char* buf;
 
-	asprintf(&buf, "logcat -v time *:%s > logcat", logcat_priority[logwatch->logcat_prior]);
+	asprintf(&buf, "logcat -v time *:%s > logcat",
+			logcat_priority[logwatch->logcat_prior]);
 
 	for(;;) {
 		if (system(buf) < 0) {
@@ -356,7 +498,8 @@ static int do_work(struct logwatch_data* logwatch) {
 		return -1;
 	}
 
-	retval = pthread_attr_setdetachstate(&logwatch->attr, PTHREAD_CREATE_DETACHED);
+	retval = pthread_attr_setdetachstate(&logwatch->attr,
+			PTHREAD_CREATE_DETACHED);
 	if (retval) {
 		LOGE("Failed to set pthread attr.");
 		return -1;
@@ -385,7 +528,8 @@ static int do_work(struct logwatch_data* logwatch) {
 			LOGE("Failed to open logcat: %s.", strerror(errno));
 			return -1;
 		}
-		retval = pthread_create(&logwatch->logcat_pid, &logwatch->attr, start_watch_logcat, (void *)logwatch);
+		retval = pthread_create(&logwatch->logcat_pid, &logwatch->attr,
+				start_watch_logcat, (void *)logwatch);
 		if (retval < 0) {
 			LOGE("Failed to create thread to watch logcat.");
 			return -1;
@@ -427,20 +571,27 @@ int main (int argc, char* argv[])
 	load_configure("/system/etc/logwatch.conf", logwatch_data);
 
 #ifdef DEBUG
-	dump_logwatch_data(logwatch_data);
+	//dump_logwatch_data(logwatch_data);
 #endif
+
+	if (!logwatch_data->is_enable_logwatch) {
+		LOGW("\e[0;91mI was forbidden to run...Bye!\e[0m");
+		abort();
+	}
 
 	retval = init_work(logwatch_data);
 	if (retval < 0) {
-		LOGE("Abort.");
+		LOGE("Failed to init work...Abort.");
 		abort();
 	}
 
 	retval = do_work(logwatch_data);
 	if (retval < 0) {
-		LOGE("Abort.");
+		LOGE("Faild to do_work...Abort.");
 		abort();
 	}
+
+	LOGW("\e[0;91mI'm ready...Let's go!\e[0m");
 
 	while (1) {
 		sleep(1000);

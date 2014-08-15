@@ -30,12 +30,14 @@
 #endif
 
 #ifndef LOGW
-#define LOGW(...) __android_log_print(ANDROID_LOG_WARN  , LOG_TAG, __VA_ARGS__)
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN , LOG_TAG, __VA_ARGS__)
 #endif
 
 #ifndef LOGE
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR  , LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR , LOG_TAG, __VA_ARGS__)
 #endif
+
+#define LOG_FOLDER "ingenic-log"
 
 struct object {
 	const char		*name;
@@ -55,6 +57,7 @@ struct kmsg {
 };
 
 struct misc {
+	struct object	enable;
 	struct object	log_path;
 	struct object	log_num;
 };
@@ -66,6 +69,8 @@ struct config {
 };
 
 struct logwatch_data {
+	int		is_enable_logwatch;
+#define LOGWATCH_ENABLE_DEF	1
 	char*	log_path;
 #define	LOG_PATH_DEF	"/data"
 	int		log_num;

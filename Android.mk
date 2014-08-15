@@ -27,7 +27,12 @@ LOCAL_MODULE := logwatch
 ##########################
 # enable it open debug
 ##########################
-#LOCAL_CFLAGS += -g -DDEBUG
+LOCAL_CFLAGS += -g -DDEBUG
+
+##########################
+# enable it color debug log
+##########################
+LOCAL_CFLAGS += -DCOLOR
 
 LOCAL_C_INCLUDES += $(KERNEL_HEADERS)
 LOCAL_SHARED_LIBRARIES += libcutils liblog
