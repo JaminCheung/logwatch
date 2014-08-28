@@ -19,12 +19,15 @@ misc={
 #开启/关闭应用
 	enable=yes
 
+#延时启动,单位毫秒
+	delay=0
+
 #配置系统log路径，指定一个默认为可读写的分区,不确定则使用/data,如果指定分区不可写，软件将
 #在/data/分区默认建立ingenic-log目录存放log
 	log_path=/data
 
 #配置保存log的数量
-	log_num=3
+	log_num=2
 }
 
 kmsg={
@@ -55,5 +58,5 @@ logcat={
 #  E(2)    Error
 #  F(1)    Fatal
 #  S(0)    Silent (supress all output)
-	prior=5
+	prior=2
 }

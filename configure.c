@@ -40,6 +40,7 @@ static void dump_config(struct config *config) {
 	LOGD("===================================");
 	LOGD("Dump config.");
 	LOGD("%s: %s", config->misc->enable.name, config->misc->enable.value);
+	LOGD("%s: %s", config->misc->delay.name, config->misc->delay.value);
 	LOGD("%s: %s", config->misc->log_path.name, config->misc->log_path.value);
 	LOGD("%s: %s", config->misc->log_num.name, config->misc->log_num.value);
 	LOGD("%s: %s", config->kmsg->is_enable.name, config->kmsg->is_enable.value);
@@ -49,6 +50,18 @@ static void dump_config(struct config *config) {
 	LOGD("%s: %s", config->logcat->fifo_size.name, config->logcat->fifo_size.value);
 	LOGD("%s: %s", config->logcat->prior.name, config->logcat->prior.value);
 	LOGD("===================================");
+}
+
+static void msleep(int msec) {
+	struct timespec ts;
+	int err;
+
+	ts.tv_sec = (msec / 1000);
+	ts.tv_nsec = (msec % 1000) * 1000 * 1000;
+
+	do {
+		err = nanosleep(&ts, &ts);
+	} while (err < 0 && errno == EINTR);
 }
 
 static char* get_line (char *s, int size, FILE* stream, int* line, char** _pos) {
@@ -125,6 +138,7 @@ static struct misc* read_misc_config(FILE* stream, int* line) {
 	int end = 0;
 
 	char* enable = NULL;
+	char* delay = NULL;
 	char* log_path = NULL;
 	char* log_num = NULL;
 
@@ -136,6 +150,13 @@ static struct misc* read_misc_config(FILE* stream, int* line) {
 			enable = strdup(get_value(pos));
 			if (!enable) {
 				LOGE("Failed to parase line: %d: enable=?", *line);
+				errors++;
+				break;
+			}
+		} else if(!strncmp(pos, "delay=", 6)) {
+			delay = strdup(get_value(pos));
+			if (!delay) {
+				LOGE("Failed to parase line: %d: delay=?", *line);
 				errors++;
 				break;
 			}
@@ -168,6 +189,23 @@ static struct misc* read_misc_config(FILE* stream, int* line) {
 	if (errors)
 		goto error;
 
+	if (!strcmp(enable, "no")) {
+		LOGW("\e[0;91mI was forbidden to run...Bye!\e[0m");
+		abort();
+	}
+
+	if (atol(log_num) < 0 ||
+			(strcmp(enable, "yes") && strcmp(enable, "no")) ||
+			atoi(delay) < 0) {
+		LOGE("Invalid argument.");
+		goto error;
+	}
+
+	if (atoi(delay) > 0) {
+		LOGW("\e[0;91mI need to sleep %d ms!\e[0m", atoi(delay));
+		msleep(atoi(delay));
+	}
+
 	if (lstat(log_path, &sb)) {
     	LOGE("Failed to get info about \"%s\": %s.", log_path, strerror(errno));
 		goto error;
@@ -178,14 +216,12 @@ static struct misc* read_misc_config(FILE* stream, int* line) {
     	goto error;
     }
 
-	if (atol(log_num) < 0) {
-		LOGE("Invalid argument.");
-		goto error;
-	}
-
 	config = (struct misc *)malloc(sizeof(struct misc));
 	config->enable.name = strdup("Enable logwatch");
 	config->enable.value = enable;
+
+	config->delay.name = strdup("Delay boot");
+	config->delay.value = delay;
 
 	config->log_path.name = strdup("Log path");
 	config->log_path.value = log_path;
@@ -197,6 +233,8 @@ static struct misc* read_misc_config(FILE* stream, int* line) {
 error:
 	if (enable)
 		free(enable);
+	if (delay)
+		free(delay);
 	if (log_path)
 		free(log_path);
 	if (log_num)
@@ -371,6 +409,8 @@ static void install_config(struct config* config, struct logwatch_data* logwatch
 	else
 		logwatch->is_enable_logwatch = 0;
 
+	logwatch->boot_delay = atoi(config->misc->delay.value);
+
 	logwatch->log_path = config->misc->log_path.value;
 	logwatch->log_num = atol(config->misc->log_num.value);
 
@@ -398,7 +438,7 @@ static void install_default_config(struct logwatch_data* logwatch) {
 	LOGW("Installing default configuration.");
 
 	logwatch->is_enable_logwatch = LOGWATCH_ENABLE_DEF;
-
+	logwatch->boot_delay = BOOT_DELAY_DEF;
 	logwatch->log_path = strdup(LOG_PATH_DEF);
 	logwatch->log_num = LOG_NUM_DEF;
 

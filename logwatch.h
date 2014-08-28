@@ -58,6 +58,7 @@ struct kmsg {
 
 struct misc {
 	struct object	enable;
+	struct object	delay;
 	struct object	log_path;
 	struct object	log_num;
 };
@@ -71,10 +72,15 @@ struct config {
 struct logwatch_data {
 	int		is_enable_logwatch;
 #define LOGWATCH_ENABLE_DEF	1
+
+	int boot_delay;
+#define BOOT_DELAY_DEF	0
+
 	char*	log_path;
 #define	LOG_PATH_DEF	"/data"
+
 	int		log_num;
-#define LOG_NUM_DEF		3
+#define LOG_NUM_DEF		2
 
 	pthread_attr_t attr;
 	char* cur_log_path;
@@ -114,7 +120,7 @@ struct logwatch_data {
 #define	LOGCAT_ERROR	2
 #define	LOGCAT_FATAL	1
 #define	LOGCAT_SILENT	0
-#define	LOGCAT_PRIOR_DEF	LOGCAT_DEBUG
+#define	LOGCAT_PRIOR_DEF	LOGCAT_ERROR
 };
 
 #endif /* CONFIG_H_ */

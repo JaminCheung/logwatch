@@ -46,6 +46,7 @@ static void dump_logwatch_data(struct logwatch_data* logwatch) {
 	LOGD("===================================");
 	LOGD("Dump logwatch data.");
 	LOGD("enable logwatch: %d", logwatch->is_enable_logwatch);
+	LOGD("boot delay: %d", logwatch->boot_delay);
 	LOGD("system log path: %s", logwatch->log_path);
 	LOGD("system log number: %d", logwatch->log_num);
 	LOGD("enable kernel message: %d", logwatch->is_enable_kmsg);
@@ -573,11 +574,6 @@ int main (int argc, char* argv[])
 #ifdef DEBUG
 	//dump_logwatch_data(logwatch_data);
 #endif
-
-	if (!logwatch_data->is_enable_logwatch) {
-		LOGW("\e[0;91mI was forbidden to run...Bye!\e[0m");
-		abort();
-	}
 
 	retval = init_work(logwatch_data);
 	if (retval < 0) {
