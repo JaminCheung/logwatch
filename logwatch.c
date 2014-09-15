@@ -138,9 +138,9 @@ static int init_work(struct logwatch_data* logwatch) {
 	 */
 	chdir(logwatch->log_path);
 	if (!stat(LOG_FOLDER, &sb) && S_ISDIR(sb.st_mode)) {
-		LOGW("\"%s/ingenic-log\" already exist.", logwatch->log_path);
+		LOGW("\"%s/%s\" already exist.", logwatch->log_path, LOG_FOLDER);
 	} else {
-		retval = mkdir("ingenic-log", S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP \
+		retval = mkdir(LOG_FOLDER, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP \
 				 | S_IROTH);
 		if (retval < 0) {
 			LOGE("Failed to create system log folder: %s.", strerror(errno));
@@ -151,7 +151,7 @@ static int init_work(struct logwatch_data* logwatch) {
 	/*
 	 * scan ingenic-log to get all log name
 	 */
-	stream = opendir("ingenic-log");
+	stream = opendir(LOG_FOLDER);
 	if (!stream) {
 		LOGE("Failed to open folder %s: %s.", logwatch->log_path,
 				strerror(errno));
@@ -569,7 +569,7 @@ int main (int argc, char* argv[])
 
 	register_signal_handler();
 
-	load_configure("/system/etc/logwatch.conf", logwatch_data);
+	load_configure(CONFIG_FILE, logwatch_data);
 
 #ifdef DEBUG
 	//dump_logwatch_data(logwatch_data);

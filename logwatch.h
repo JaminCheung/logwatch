@@ -37,6 +37,7 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR , LOG_TAG, __VA_ARGS__)
 #endif
 
+#define CONFIG_FILE "/system/etc/logwatch.conf"
 #define LOG_FOLDER "ingenic-log"
 
 struct object {
