@@ -104,7 +104,6 @@ static int init_work(struct logwatch_data* logwatch) {
 	DIR* stream;
 	struct dirent *entry;
 	struct stat sb;
-	char* log_path = logwatch->log_path;
 	char** folder_array = NULL;
 	char** log_array = NULL;
 	char** serial_char_array = NULL;
@@ -137,7 +136,7 @@ static int init_work(struct logwatch_data* logwatch) {
 	/*
 	 * create folder to save log
 	 */
-	chdir(log_path);
+	chdir(logwatch->log_path);
 	if (!stat(LOG_FOLDER, &sb) && S_ISDIR(sb.st_mode)) {
 		LOGW("\"%s/ingenic-log\" already exist.", logwatch->log_path);
 	} else {
@@ -154,7 +153,8 @@ static int init_work(struct logwatch_data* logwatch) {
 	 */
 	stream = opendir("ingenic-log");
 	if (!stream) {
-		LOGE("Failed to open folder %s: %s.", log_path, strerror(errno));
+		LOGE("Failed to open folder %s: %s.", logwatch->log_path,
+				strerror(errno));
 		return -1;
 	}
 
