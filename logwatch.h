@@ -39,6 +39,8 @@
 
 #define CONFIG_FILE "/system/etc/logwatch.conf"
 #define LOG_FOLDER "ingenic-log"
+#define KERNEL_LOG_NAME "kmsg"
+#define LOGCAT_LOG_NAME "logcat"
 
 struct object {
 	const char		*name;
@@ -84,6 +86,8 @@ struct logwatch_data {
 #define LOG_NUM_DEF		2
 
 	pthread_attr_t attr;
+	pthread_t    observer_pid;
+	pthread_mutex_t kmsg_lock;
 	char* cur_log_path;
 
 	int		kmsg_fd;
@@ -91,6 +95,7 @@ struct logwatch_data {
 	int		is_enable_kmsg;
 #define KMSG_ENABLE_DEF	1
 
+	//unit KB
 	unsigned long	kmsg_size;
 #define KMSG_SIZE_DEF (1024)
 
@@ -110,8 +115,9 @@ struct logwatch_data {
 	int 	is_enable_logcat;
 #define LOGCAT_ENABLE_DEF	1
 
+	//unit KB
 	unsigned long logcat_size;
-#define LOGCAT_SIZE_DEF	(1024)
+#define LOGCAT_SIZE_DEF	(1024 * 10)
 
 	int 	logcat_prior;
 #define	LOGCAT_VERBOSE	6

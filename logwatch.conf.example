@@ -35,8 +35,8 @@ kmsg={
 #是否记录内核log:yes or no
 	is_enable=yes
 
-#参数目前不支持
-	fifo_size=0
+#内核log文件大小,单位KB,1MB == (1024*1)
+	fifo_size=1024
 
 #参数目前不支持
 	prior=6
@@ -47,8 +47,8 @@ logcat={
 #是否开启logcat:yes or no
 	is_enable=yes
 
-#参数目前不支持
-	fifo_size=0
+#logcat文件大小,单位KB,10MB == (1024*10)
+	fifo_size=10240
 
 #logcat输出等级
 #  V(6)    Verbose
