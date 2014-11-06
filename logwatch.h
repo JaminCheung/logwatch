@@ -39,8 +39,8 @@
 
 #define CONFIG_FILE "/system/etc/logwatch.conf"
 #define LOG_FOLDER "ingenic-log"
-#define KERNEL_LOG_NAME "kmsg"
-#define LOGCAT_LOG_NAME "logcat"
+#define KERNEL_LOG_NAME "kmsg.txt"
+#define LOGCAT_LOG_NAME "logcat.txt"
 
 struct object {
 	const char		*name;
