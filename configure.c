@@ -191,20 +191,10 @@ static struct misc* read_misc_config(FILE* stream, int* line) {
     if (errors)
         goto error;
 
-    if (!strcmp(enable, "no")) {
-        LOGW("\e[0;91mI was forbidden to run...Bye!\e[0m");
-        abort();
-    }
-
     if (atol(log_num) < 0 || (strcmp(enable, "yes") && strcmp(enable, "no"))
             || atoi(delay) < 0) {
         LOGE("Invalid argument.");
         goto error;
-    }
-
-    if (atoi(delay) > 0) {
-        LOGW("\e[0;91mI need to sleep %d ms!\e[0m", atoi(delay));
-        msleep(atoi(delay));
     }
 
     if (lstat(log_path, &sb)) {

@@ -274,9 +274,7 @@ static int init_work(struct logwatch_data* logwatch) {
         asprintf(&buf, "%lu", serial_int_array[i]);
         for (j = 0; j < log_count; j++) {
             if (!strncmp(buf, log_array[j], strlen(serial_char_array[j]))) {
-#if DEBUG
-                LOGD("delete old log: %s\n", log_array[j]);
-#endif
+                LOGI("\e[0;91mdelete old log: %s\e[0m", log_array[j]);
                 delete_folder(log_array[j]);
             }
         }
@@ -300,9 +298,7 @@ static int init_work(struct logwatch_data* logwatch) {
     }
     logwatch->cur_log_path = strdup(buf);
 
-#if DEBUG
-    LOGD("create new log: %s\n", logwatch->cur_log_path);
-#endif
+    LOGI("\e[0;91mcreate new log: %s\e[0m", logwatch->cur_log_path);
 
     free(buf);
 
@@ -572,6 +568,16 @@ int main(int argc, char* argv[]) {
     register_signal_handler();
 
     load_configure(CONFIG_FILE, logwatch_data);
+
+    if (!logwatch_data->is_enable_logwatch) {
+        LOGW("\e[0;91mI was forbidden to run...Bye!\e[0m");
+        abort();
+    }
+
+    if (logwatch_data->boot_delay) {
+        LOGW("\e[0;91mI need to sleep %d ms!\e[0m", logwatch_data->boot_delay);
+        msleep(logwatch_data->boot_delay);
+    }
 
 #ifdef DEBUG
     //dump_logwatch_data(logwatch_data);
