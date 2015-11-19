@@ -45,9 +45,9 @@ static void dump_config(struct config *config) {
 	LOGD("%s: %s", config->misc->log_num.name, config->misc->log_num.value);
 	LOGD("%s: %s", config->kmsg->is_enable.name, config->kmsg->is_enable.value);
 	LOGD("%s: %s", config->kmsg->prior.name, config->kmsg->prior.value);
-	LOGD("%s: %sKB", config->kmsg->fifo_size.name, config->kmsg->fifo_size.value);
+	LOGD("%s: %s", config->kmsg->fifo_size.name, config->kmsg->fifo_size.value);
 	LOGD("%s: %s", config->logcat->is_enable.name, config->logcat->is_enable.value);
-	LOGD("%s: %sKB", config->logcat->fifo_size.name, config->logcat->fifo_size.value);
+	LOGD("%s: %s", config->logcat->fifo_size.name, config->logcat->fifo_size.value);
 	LOGD("%s: %s", config->logcat->prior.name, config->logcat->prior.value);
 	LOGD("===================================");
 }
@@ -294,7 +294,7 @@ static struct kmsg* read_kmsg_config(FILE* stream, int* line) {
 		goto error;
 
 	if ((strcmp(is_enable, "yes") && strcmp(is_enable, "no"))
-			|| (atol(fifo_size) <= 0)
+			|| (atol(fifo_size) < 0)
 			|| (atol(prior) < 0 || atol(prior) > 8)) {
 		LOGE("Invalid argument.");
 		goto error;
@@ -375,7 +375,7 @@ static struct logcat* read_logcat_config(FILE* stream, int* line) {
 		goto error;
 
 	if ((strcmp(is_enable, "yes") && strcmp(is_enable, "no"))
-			|| (atol(fifo_size) <= 0)
+			|| (atol(fifo_size) < 0)
 			|| (atol(prior) < 0 || atol(prior) > 6)) {
 		LOGE("Invalid argument.");
 		goto error;

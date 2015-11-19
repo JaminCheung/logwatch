@@ -99,14 +99,6 @@ static int delete_folder(const char *path)
 	return 0;
 }
 
-static unsigned long get_file_size(const char *file) {
-    struct stat sb;
-
-    if(!stat(file, &sb))
-        return (long)sb.st_size;
-    return -1;
-}
-
 static int init_work(struct logwatch_data* logwatch) {
 	int retval = 0;
 	DIR* stream;
@@ -469,14 +461,12 @@ static void* start_watch_kmsg(void* param) {
 			LOGE("Failed to read /proc/kmsg: %s.", strerror(errno));
 			break;
 		}
-		pthread_mutex_lock(&logwatch->kmsg_lock);
+
 		retval = write(logwatch->kmsg_fd, rw_buf, read_count);
 		if (retval < 0) {
-			LOGE("Failed to write %s: %s.", LOGCAT_LOG_NAME, strerror(errno));
-			pthread_mutex_unlock(&logwatch->kmsg_lock);
+			LOGE("Failed to write kmsg: %s.", strerror(errno));
 			break;
 		}
-		pthread_mutex_unlock(&logwatch->kmsg_lock);
 	}
 	close(src_fd);
 	return NULL;
@@ -500,31 +490,6 @@ static void* start_watch_logcat(void *param) {
 	return NULL;
 }
 
-static void* start_observer(void *param) {
-    struct logwatch_data* logwatch = (struct logwatch_data *)param;
-
-    chdir(logwatch->cur_log_path);
-    unsigned long kmsg_size = 0;
-    unsigned long logcat_size = 0;
-    for(;;) {
-        if (logwatch->is_enable_kmsg) {
-            pthread_mutex_lock(&logwatch->kmsg_lock);
-            kmsg_size = get_file_size(KERNEL_LOG_NAME);
-            if (kmsg_size / 1024 >= logwatch->kmsg_size)
-                truncate(KERNEL_LOG_NAME, 0);
-            pthread_mutex_unlock(&logwatch->kmsg_lock);
-        }
-
-        if (logwatch->is_enable_logcat) {
-            logcat_size = get_file_size(LOGCAT_LOG_NAME);
-            if (logcat_size / 1024 >= logwatch->logcat_size)
-                truncate(LOGCAT_LOG_NAME, 0);
-        }
-        msleep(200);
-    }
-    return NULL;
-}
-
 static int do_work(struct logwatch_data* logwatch) {
 	int retval = 0;
 
@@ -543,25 +508,23 @@ static int do_work(struct logwatch_data* logwatch) {
 
 	chdir(logwatch->cur_log_path);
 	if (logwatch->is_enable_kmsg) {
-		logwatch->kmsg_fd = open(KERNEL_LOG_NAME, O_RDWR | O_SYNC | O_CREAT |
-		        O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		logwatch->kmsg_fd = open("kmsg", O_RDWR | O_SYNC | O_CREAT | O_APPEND,
+				S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 		if (logwatch->kmsg_fd < 0) {
 			LOGE("Failed to open kmsg: %s.", strerror(errno));
 			return -1;
 		}
 
-		retval = pthread_create(&logwatch->kmsg_pid, &logwatch->attr,
-		        start_watch_kmsg, (void *)logwatch);
+		retval = pthread_create(&logwatch->kmsg_pid, &logwatch->attr, start_watch_kmsg, (void *)logwatch);
 		if (retval < 0) {
-			LOGE("Failed to create thread to watch kernel log.");
+			LOGE("Failed to create thread to watch kmsg.");
 			return -1;
 		}
-		pthread_mutex_init(&logwatch->kmsg_lock, NULL);
 	}
 
 	if (logwatch->is_enable_logcat) {
-		logwatch->logcat_fd = open(LOGCAT_LOG_NAME, O_RDWR | O_SYNC | O_CREAT |
-		        O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		logwatch->logcat_fd = open("logcat", O_RDWR | O_SYNC | O_CREAT | O_APPEND,
+				S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 		if (logwatch->logcat_fd < 0) {
 			LOGE("Failed to open logcat: %s.", strerror(errno));
 			return -1;
@@ -574,12 +537,6 @@ static int do_work(struct logwatch_data* logwatch) {
 		}
 	}
 
-	retval = pthread_create(&logwatch->observer_pid, &logwatch->attr,
-	        start_observer, (void *)logwatch);
-	if (retval < 0) {
-	    LOGE("Failed to create thread to watch log file size.");
-	    return -1;
-	}
 	return 0;
 }
 
