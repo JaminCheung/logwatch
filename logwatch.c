@@ -484,10 +484,10 @@ static void* start_watch_kmsg(void* param) {
 
 static void* start_watch_logcat(void *param) {
 	struct logwatch_data* logwatch = (struct logwatch_data *)param;
-	char* buf = NULL;
+	char* buf;
 
-	asprintf(&buf, "logcat -v time *:%s > %s",
-			logcat_priority[logwatch->logcat_prior], LOGCAT_LOG_NAME);
+	asprintf(&buf, "logcat -v time *:%s > logcat",
+			logcat_priority[logwatch->logcat_prior]);
 
 	for(;;) {
 		if (system(buf) < 0) {
@@ -500,43 +500,6 @@ static void* start_watch_logcat(void *param) {
 	return NULL;
 }
 
-static int truncate_file(const char* file_name, unsigned long cut_size,
-        int is_cut_head) {
-    int retval = 0;
-    FILE* stream = NULL;
-    char line_buf[512] = {0};
-    char *line = NULL;
-    char *file_buf = NULL;
-    char *file = NULL;
-
-    file_buf = (char *)malloc(sizeof(char) * 1024 * 1024 * 11);
-    if (!file_buf) {
-        LOGE("Failed to allocate memory for %s: %s", file_name, strerror(errno));
-        return -1;
-    }
-    file = file_buf;
-    memset(file_buf, 0, sizeof(char) * 1024 * 1024 * 11);
-
-    stream = fopen(file_name, "r+");
-    if (stream == NULL) {
-        LOGE("Failed to open %s: %s", file_name, strerror(errno));
-        return -1;
-    }
-
-    while(!feof(stream)) {
-        line = fgets(line_buf, sizeof(line_buf), stream);
-        if (line != NULL) {
-            strncpy(file, line, strlen(line) + 1);
-            file += strlen(line) + 1;
-        }
-    }
-
-    fclose(stream);
-    free(file_buf);
-    return 0;
-
-}
-
 static void* start_observer(void *param) {
     struct logwatch_data* logwatch = (struct logwatch_data *)param;
 
@@ -547,18 +510,17 @@ static void* start_observer(void *param) {
         if (logwatch->is_enable_kmsg) {
             pthread_mutex_lock(&logwatch->kmsg_lock);
             kmsg_size = get_file_size(KERNEL_LOG_NAME);
-            if (kmsg_size >= logwatch->kmsg_size * 1024) {
+            if (kmsg_size / 1024 >= logwatch->kmsg_size)
                 truncate(KERNEL_LOG_NAME, 0);
-            }
             pthread_mutex_unlock(&logwatch->kmsg_lock);
         }
 
         if (logwatch->is_enable_logcat) {
             logcat_size = get_file_size(LOGCAT_LOG_NAME);
-            if (logcat_size >= logwatch->logcat_size * 1024)
+            if (logcat_size / 1024 >= logwatch->logcat_size)
                 truncate(LOGCAT_LOG_NAME, 0);
         }
-        msleep(500);
+        msleep(200);
     }
     return NULL;
 }
