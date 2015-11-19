@@ -37,504 +37,501 @@
 #include "logwatch.h"
 
 static void dump_config(struct config *config) {
-	LOGD("===================================");
-	LOGD("Dump config.");
-	LOGD("%s: %s", config->misc->enable.name, config->misc->enable.value);
-	LOGD("%s: %s", config->misc->delay.name, config->misc->delay.value);
-	LOGD("%s: %s", config->misc->log_path.name, config->misc->log_path.value);
-	LOGD("%s: %s", config->misc->log_num.name, config->misc->log_num.value);
-	LOGD("%s: %s", config->kmsg->is_enable.name, config->kmsg->is_enable.value);
-	LOGD("%s: %s", config->kmsg->prior.name, config->kmsg->prior.value);
-	LOGD("%s: %s", config->kmsg->fifo_size.name, config->kmsg->fifo_size.value);
-	LOGD("%s: %s", config->logcat->is_enable.name, config->logcat->is_enable.value);
-	LOGD("%s: %s", config->logcat->fifo_size.name, config->logcat->fifo_size.value);
-	LOGD("%s: %s", config->logcat->prior.name, config->logcat->prior.value);
-	LOGD("===================================");
+    LOGD("===================================");
+    LOGD("Dump config.");
+    LOGD("%s: %s", config->misc->enable.name, config->misc->enable.value);
+    LOGD("%s: %s", config->misc->delay.name, config->misc->delay.value);
+    LOGD("%s: %s", config->misc->log_path.name, config->misc->log_path.value);
+    LOGD("%s: %s", config->misc->log_num.name, config->misc->log_num.value);
+    LOGD("%s: %s", config->kmsg->is_enable.name, config->kmsg->is_enable.value);
+    LOGD("%s: %s", config->kmsg->prior.name, config->kmsg->prior.value);
+    LOGD("%s: %s", config->kmsg->fifo_size.name, config->kmsg->fifo_size.value);
+    LOGD("%s: %s", config->logcat->is_enable.name,
+            config->logcat->is_enable.value);
+    LOGD("%s: %s", config->logcat->fifo_size.name,
+            config->logcat->fifo_size.value);
+    LOGD("%s: %s", config->logcat->prior.name, config->logcat->prior.value);
+    LOGD("===================================");
 }
 
 static void msleep(int msec) {
-	struct timespec ts;
-	int err;
+    struct timespec ts;
+    int err;
 
-	ts.tv_sec = (msec / 1000);
-	ts.tv_nsec = (msec % 1000) * 1000 * 1000;
+    ts.tv_sec = (msec / 1000);
+    ts.tv_nsec = (msec % 1000) * 1000 * 1000;
 
-	do {
-		err = nanosleep(&ts, &ts);
-	} while (err < 0 && errno == EINTR);
+    do {
+        err = nanosleep(&ts, &ts);
+    } while (err < 0 && errno == EINTR);
 }
 
-static char* get_line (char *s, int size, FILE* stream, int* line, char** _pos) {
-	char *pos = NULL;
-	char *end = NULL;
-	char *sstart = NULL;
+static char* get_line(char *s, int size, FILE* stream, int* line, char** _pos) {
+    char *pos = NULL;
+    char *end = NULL;
+    char *sstart = NULL;
 
-	while (fgets(s, size, stream)) {
-		(*line)++;
-		s[size - 1] = '\0';
-		pos = s;
+    while (fgets(s, size, stream)) {
+        (*line)++;
+        s[size - 1] = '\0';
+        pos = s;
 
-		/* Skip white space from the beginning of line. */
-		while (*pos == ' ' || *pos == '\t' || *pos == '\r')
-			pos++;
+        /* Skip white space from the beginning of line. */
+        while (*pos == ' ' || *pos == '\t' || *pos == '\r')
+            pos++;
 
-		/* Skip comment lines and empty lines */
-		if (*pos == '#' || *pos == '\n' || *pos == '\0')
-			continue;
+        /* Skip comment lines and empty lines */
+        if (*pos == '#' || *pos == '\n' || *pos == '\0')
+            continue;
 
-		/*
-		 * Remove # comments unless they are within a double quoted
-		 * string.
-		 */
-		sstart = strchr(pos, '"');
-		if (sstart)
-			sstart = strrchr(sstart + 1, '"');
-		if (!sstart)
-			sstart = pos;
-		end = strchr(sstart, '#');
-		if (end)
-			*end-- = '\0';
-		else
-			end = pos + strlen(pos) - 1;
+        /*
+         * Remove # comments unless they are within a double quoted
+         * string.
+         */
+        sstart = strchr(pos, '"');
+        if (sstart)
+            sstart = strrchr(sstart + 1, '"');
+        if (!sstart)
+            sstart = pos;
+        end = strchr(sstart, '#');
+        if (end)
+            *end-- = '\0';
+        else
+            end = pos + strlen(pos) - 1;
 
-		/* Remove trailing white space. */
-		while (end > pos && (*end == '\n' || *end == ' ' || *end == '\t'
-				|| *end == '\r'))
-			*end-- = '\0';
+        /* Remove trailing white space. */
+        while (end > pos
+                && (*end == '\n' || *end == ' ' || *end == '\t' || *end == '\r'))
+            *end-- = '\0';
 
-		if (*pos == '\0')
-			continue;
+        if (*pos == '\0')
+            continue;
 
-		if (_pos)
-			*_pos = pos;
+        if (_pos)
+            *_pos = pos;
 
 #ifdef DEBUG
-		LOGD("Line %d: %s", *line, *_pos);
+        LOGD("Line %d: %s", *line, *_pos);
 #endif
 
-		return pos;
-	}
+        return pos;
+    }
 
-	if (_pos)
-		*_pos = NULL;
-	return NULL;
+    if (_pos)
+        *_pos = NULL;
+    return NULL;
 }
 
 const char* get_value(const char* line) {
-	char* sstart = strchr(line, '=');
-	if (sstart)
-		return sstart[1] == '\0' ? NULL : sstart + 1;
-	else
-		return NULL;
+    char* sstart = strchr(line, '=');
+    if (sstart)
+        return sstart[1] == '\0' ? NULL : sstart + 1;
+    else
+        return NULL;
 }
 
 static struct misc* read_misc_config(FILE* stream, int* line) {
-	struct misc *config = NULL;
-	struct stat sb;
-	int permit = 0;
-	char buf[256] = {0};
-	char* pos = NULL;
-	int errors = 0;
-	int end = 0;
+    struct misc *config = NULL;
+    struct stat sb;
+    int permit = 0;
+    char buf[256] = { 0 };
+    char* pos = NULL;
+    int errors = 0;
+    int end = 0;
 
-	char* enable = NULL;
-	char* delay = NULL;
-	char* log_path = NULL;
-	char* log_num = NULL;
+    char* enable = NULL;
+    char* delay = NULL;
+    char* log_path = NULL;
+    char* log_num = NULL;
 
-	while(get_line(buf, sizeof(buf), stream, line, &pos)) {
-		if (!strcmp(pos, "}")) {
-			end = 1;
-			break;
-		} else if (!strncmp(pos, "enable=", 7)) {
-			enable = strdup(get_value(pos));
-			if (!enable) {
-				LOGE("Failed to parase line: %d: enable=?", *line);
-				errors++;
-				break;
-			}
-		} else if(!strncmp(pos, "delay=", 6)) {
-			delay = strdup(get_value(pos));
-			if (!delay) {
-				LOGE("Failed to parase line: %d: delay=?", *line);
-				errors++;
-				break;
-			}
-		} else if (!strncmp(pos, "log_path=", 9)) {
-			log_path = strdup(get_value(pos));
-			if (!log_path) {
-				LOGE("Failed to parse line: %d: log_path=?", *line);
-				errors++;
-				break;
-			}
-		} else if (!strncmp(pos, "log_num=", 8)) {
-			log_num = strdup(get_value(pos));
-			if (!log_num) {
-				LOGE("Failed to parse line: %d: log_num=?", *line);
-				errors++;
-				break;
-			}
-		} else {
-			LOGE("Failed to parse Line: %d: Unrecognized line.", *line);
-			errors++;
-			break;
-		}
-	}
-
-	if (!end) {
-		LOGE( "Failed to parse Line: %d: lost \"}\".", *line);
-		goto error;
-	}
-
-	if (errors)
-		goto error;
-
-	if (!strcmp(enable, "no")) {
-		LOGW("\e[0;91mI was forbidden to run...Bye!\e[0m");
-		abort();
-	}
-
-	if (atol(log_num) < 0 ||
-			(strcmp(enable, "yes") && strcmp(enable, "no")) ||
-			atoi(delay) < 0) {
-		LOGE("Invalid argument.");
-		goto error;
-	}
-
-	if (atoi(delay) > 0) {
-		LOGW("\e[0;91mI need to sleep %d ms!\e[0m", atoi(delay));
-		msleep(atoi(delay));
-	}
-
-	if (lstat(log_path, &sb)) {
-    	LOGE("Failed to get info about \"%s\": %s.", log_path, strerror(errno));
-		goto error;
-	}
-
-    if (access(log_path, W_OK)) {
-    	LOGE("Failed to access \"%s\": %s.", log_path, strerror(errno));
-    	goto error;
+    while (get_line(buf, sizeof(buf), stream, line, &pos)) {
+        if (!strcmp(pos, "}")) {
+            end = 1;
+            break;
+        } else if (!strncmp(pos, "enable=", 7)) {
+            enable = strdup(get_value(pos));
+            if (!enable) {
+                LOGE("Failed to parase line: %d: enable=?", *line);
+                errors++;
+                break;
+            }
+        } else if (!strncmp(pos, "delay=", 6)) {
+            delay = strdup(get_value(pos));
+            if (!delay) {
+                LOGE("Failed to parase line: %d: delay=?", *line);
+                errors++;
+                break;
+            }
+        } else if (!strncmp(pos, "log_path=", 9)) {
+            log_path = strdup(get_value(pos));
+            if (!log_path) {
+                LOGE("Failed to parse line: %d: log_path=?", *line);
+                errors++;
+                break;
+            }
+        } else if (!strncmp(pos, "log_num=", 8)) {
+            log_num = strdup(get_value(pos));
+            if (!log_num) {
+                LOGE("Failed to parse line: %d: log_num=?", *line);
+                errors++;
+                break;
+            }
+        } else {
+            LOGE("Failed to parse Line: %d: Unrecognized line.", *line);
+            errors++;
+            break;
+        }
     }
 
-	config = (struct misc *)malloc(sizeof(struct misc));
-	config->enable.name = strdup("Enable logwatch");
-	config->enable.value = enable;
+    if (!end) {
+        LOGE("Failed to parse Line: %d: lost \"}\".", *line);
+        goto error;
+    }
 
-	config->delay.name = strdup("Delay boot");
-	config->delay.value = delay;
+    if (errors)
+        goto error;
 
-	config->log_path.name = strdup("Log path");
-	config->log_path.value = log_path;
+    if (!strcmp(enable, "no")) {
+        LOGW("\e[0;91mI was forbidden to run...Bye!\e[0m");
+        abort();
+    }
 
-	config->log_num.name = strdup("Log max number");
-	config->log_num.value = log_num;
-	return config;
+    if (atol(log_num) < 0 || (strcmp(enable, "yes") && strcmp(enable, "no"))
+            || atoi(delay) < 0) {
+        LOGE("Invalid argument.");
+        goto error;
+    }
+
+    if (atoi(delay) > 0) {
+        LOGW("\e[0;91mI need to sleep %d ms!\e[0m", atoi(delay));
+        msleep(atoi(delay));
+    }
+
+    if (lstat(log_path, &sb)) {
+        LOGE("Failed to get info about \"%s\": %s.", log_path, strerror(errno));
+        goto error;
+    }
+
+    if (access(log_path, W_OK)) {
+        LOGE("Failed to access \"%s\": %s.", log_path, strerror(errno));
+        goto error;
+    }
+
+    config = (struct misc *) malloc(sizeof(struct misc));
+    config->enable.name = strdup("Enable logwatch");
+    config->enable.value = enable;
+
+    config->delay.name = strdup("Delay boot");
+    config->delay.value = delay;
+
+    config->log_path.name = strdup("Log path");
+    config->log_path.value = log_path;
+
+    config->log_num.name = strdup("Log max number");
+    config->log_num.value = log_num;
+    return config;
 
 error:
-	if (enable)
-		free(enable);
-	if (delay)
-		free(delay);
-	if (log_path)
-		free(log_path);
-	if (log_num)
-		free(log_num);
-	return NULL;
+    if (enable)
+        free(enable);
+    if (delay)
+        free(delay);
+    if (log_path)
+        free(log_path);
+    if (log_num)
+        free(log_num);
+    return NULL;
 }
 
 static struct kmsg* read_kmsg_config(FILE* stream, int* line) {
-	struct kmsg *config = NULL;
-	char buf[256] = {0};
-	char* pos = NULL;
-	int errors = 0;
-	int end = 0;
+    struct kmsg *config = NULL;
+    char buf[256] = { 0 };
+    char* pos = NULL;
+    int errors = 0;
+    int end = 0;
 
-	char* is_enable = NULL;
-	char* fifo_size = NULL;
-	char* prior = NULL;
+    char* is_enable = NULL;
+    char* fifo_size = NULL;
+    char* prior = NULL;
 
-	while(get_line(buf, sizeof(buf), stream, line, &pos)) {
-		if (!strcmp(pos, "}")) {
-			end = 1;
-			break;
-		} else if (!strncmp(pos, "is_enable=", 10)) {
-			is_enable = strdup(get_value(pos));
-			if (!is_enable) {
-				LOGE("Failed to parse line: %d: is_enable=?", *line);
-				errors++;
-				break;
-			}
-		} else if (!strncmp(pos, "fifo_size=", 10)) {
-			fifo_size = strdup(get_value(pos));
-			if (!fifo_size) {
-				LOGE("Failed to parse line: %d: fifo_size=?", *line);
-				errors++;
-				break;
-			}
-		} else if (!strncmp(pos, "prior=", 6)) {
-			prior = strdup(get_value(pos));
-			if (!prior) {
-				LOGE("Failed to parse line: %d: prior=?", *line);
-				errors++;
-				break;
-			}
-		} else {
-			LOGE("Failed to parse Line: %d: Unrecognized line.", *line);
-			errors++;
-			break;
-		}
-	}
+    while (get_line(buf, sizeof(buf), stream, line, &pos)) {
+        if (!strcmp(pos, "}")) {
+            end = 1;
+            break;
+        } else if (!strncmp(pos, "is_enable=", 10)) {
+            is_enable = strdup(get_value(pos));
+            if (!is_enable) {
+                LOGE("Failed to parse line: %d: is_enable=?", *line);
+                errors++;
+                break;
+            }
+        } else if (!strncmp(pos, "fifo_size=", 10)) {
+            fifo_size = strdup(get_value(pos));
+            if (!fifo_size) {
+                LOGE("Failed to parse line: %d: fifo_size=?", *line);
+                errors++;
+                break;
+            }
+        } else if (!strncmp(pos, "prior=", 6)) {
+            prior = strdup(get_value(pos));
+            if (!prior) {
+                LOGE("Failed to parse line: %d: prior=?", *line);
+                errors++;
+                break;
+            }
+        } else {
+            LOGE("Failed to parse Line: %d: Unrecognized line.", *line);
+            errors++;
+            break;
+        }
+    }
 
-	if (!end) {
-		LOGE("Failed to parse Line: %d: lost \"}\".", *line);
-		goto error;
-	}
+    if (!end) {
+        LOGE("Failed to parse Line: %d: lost \"}\".", *line);
+        goto error;
+    }
 
-	if (errors)
-		goto error;
+    if (errors)
+        goto error;
 
-	if ((strcmp(is_enable, "yes") && strcmp(is_enable, "no"))
-			|| (atol(fifo_size) < 0)
-			|| (atol(prior) < 0 || atol(prior) > 8)) {
-		LOGE("Invalid argument.");
-		goto error;
-	}
+    if ((strcmp(is_enable, "yes") && strcmp(is_enable, "no"))
+            || (atol(fifo_size) < 0) || (atol(prior) < 0 || atol(prior) > 8)) {
+        LOGE("Invalid argument.");
+        goto error;
+    }
 
+    config = (struct kmsg *) malloc(sizeof(struct kmsg));
+    config->is_enable.name = strdup("Enable kernel log");
+    config->is_enable.value = is_enable;
 
-	config = (struct kmsg *)malloc(sizeof(struct kmsg));
-	config->is_enable.name = strdup("Enable kernel log");
-	config->is_enable.value = is_enable;
+    config->fifo_size.name = strdup("Kernel log buffer size");
+    config->fifo_size.value = fifo_size;
 
-	config->fifo_size.name = strdup("Kernel log buffer size");
-	config->fifo_size.value = fifo_size;
-
-	config->prior.name = strdup("Kernel log output level");
-	config->prior.value = prior;
-	return config;
+    config->prior.name = strdup("Kernel log output level");
+    config->prior.value = prior;
+    return config;
 
 error:
-	if (is_enable)
-		free(is_enable);
-	if (fifo_size)
-		free(fifo_size);
-	if (prior)
-		free(prior);
-	return NULL;
+    if (is_enable)
+        free(is_enable);
+    if (fifo_size)
+        free(fifo_size);
+    if (prior)
+        free(prior);
+    return NULL;
 
 }
 
 static struct logcat* read_logcat_config(FILE* stream, int* line) {
-	struct logcat *config = NULL;
-	char buf[256] = {0};
-	char* pos = NULL;
-	int errors = 0;
-	int end = 0;
+    struct logcat *config = NULL;
+    char buf[256] = { 0 };
+    char* pos = NULL;
+    int errors = 0;
+    int end = 0;
 
-	char* is_enable = NULL;
-	char* fifo_size = NULL;
-	char* prior = NULL;
+    char* is_enable = NULL;
+    char* fifo_size = NULL;
+    char* prior = NULL;
 
-	while(get_line(buf, sizeof(buf), stream, line, &pos)) {
-		if (!strcmp(pos, "}")) {
-			end = 1;
-			break;
-		} else if (!strncmp(pos, "is_enable=", 10)) {
-			is_enable = strdup(get_value(pos));
-			if (!is_enable) {
-				LOGE("Failed to parse line: %d: is_enable_=?", *line);
-				errors++;
-				break;
-			}
-		} else if (!strncmp(pos, "fifo_size=", 10)) {
-			fifo_size = strdup(get_value(pos));
-			if (!fifo_size) {
-				LOGE("Failed to parse line: %d: fifo_size=?", *line);
-				errors++;
-				break;
-			}
-		} else if (!strncmp(pos, "prior=", 6)) {
-			prior = strdup(get_value(pos));
-			if (!prior) {
-				LOGE("Failed to parse line: %d: prior=?", *line);
-				errors++;
-				break;
-			}
-		} else {
-			LOGE("Failed to parse Line: %d: Unrecognized line.", *line);
-			errors++;
-			break;
-		}
-	}
+    while (get_line(buf, sizeof(buf), stream, line, &pos)) {
+        if (!strcmp(pos, "}")) {
+            end = 1;
+            break;
+        } else if (!strncmp(pos, "is_enable=", 10)) {
+            is_enable = strdup(get_value(pos));
+            if (!is_enable) {
+                LOGE("Failed to parse line: %d: is_enable_=?", *line);
+                errors++;
+                break;
+            }
+        } else if (!strncmp(pos, "fifo_size=", 10)) {
+            fifo_size = strdup(get_value(pos));
+            if (!fifo_size) {
+                LOGE("Failed to parse line: %d: fifo_size=?", *line);
+                errors++;
+                break;
+            }
+        } else if (!strncmp(pos, "prior=", 6)) {
+            prior = strdup(get_value(pos));
+            if (!prior) {
+                LOGE("Failed to parse line: %d: prior=?", *line);
+                errors++;
+                break;
+            }
+        } else {
+            LOGE("Failed to parse Line: %d: Unrecognized line.", *line);
+            errors++;
+            break;
+        }
+    }
 
-	if (!end) {
-		LOGE("Failed to parse Line: %d: lost \"}\".", *line);
-		goto error;
-	}
+    if (!end) {
+        LOGE("Failed to parse Line: %d: lost \"}\".", *line);
+        goto error;
+    }
 
-	if (errors)
-		goto error;
+    if (errors)
+        goto error;
 
-	if ((strcmp(is_enable, "yes") && strcmp(is_enable, "no"))
-			|| (atol(fifo_size) < 0)
-			|| (atol(prior) < 0 || atol(prior) > 6)) {
-		LOGE("Invalid argument.");
-		goto error;
-	}
+    if ((strcmp(is_enable, "yes") && strcmp(is_enable, "no"))
+            || (atol(fifo_size) < 0) || (atol(prior) < 0 || atol(prior) > 6)) {
+        LOGE("Invalid argument.");
+        goto error;
+    }
 
-	config = (struct logcat *)malloc(sizeof(struct logcat));
-	config->is_enable.name = strdup("Enable logcat");
-	config->is_enable.value = is_enable;
+    config = (struct logcat *) malloc(sizeof(struct logcat));
+    config->is_enable.name = strdup("Enable logcat");
+    config->is_enable.value = is_enable;
 
-	config->fifo_size.name = strdup("Logcat log buffer size");
-	config->fifo_size.value = fifo_size;
+    config->fifo_size.name = strdup("Logcat log buffer size");
+    config->fifo_size.value = fifo_size;
 
-	config->prior.name = strdup("Logcat log output level");
-	config->prior.value = prior;
-	return config;
+    config->prior.name = strdup("Logcat log output level");
+    config->prior.value = prior;
+    return config;
 
 error:
-	if (is_enable)
-		free(is_enable);
-	if (fifo_size)
-		free(fifo_size);
-	if (prior)
-		free(prior);
-	return NULL;
+    if (is_enable)
+        free(is_enable);
+    if (fifo_size)
+        free(fifo_size);
+    if (prior)
+        free(prior);
+    return NULL;
 }
 
-static void install_config(struct config* config, struct logwatch_data* logwatch) {
-	/* install misc configs */
-	if (!strcmp(config->misc->enable.value, "yes"))
-		logwatch->is_enable_logwatch = 1;
-	else
-		logwatch->is_enable_logwatch = 0;
+static void install_config(struct config* config,
+        struct logwatch_data* logwatch) {
+    /* install misc configs */
+    if (!strcmp(config->misc->enable.value, "yes"))
+        logwatch->is_enable_logwatch = 1;
+    else
+        logwatch->is_enable_logwatch = 0;
 
-	logwatch->boot_delay = atoi(config->misc->delay.value);
+    logwatch->boot_delay = atoi(config->misc->delay.value);
 
-	logwatch->log_path = config->misc->log_path.value;
-	logwatch->log_num = atol(config->misc->log_num.value);
+    logwatch->log_path = config->misc->log_path.value;
+    logwatch->log_num = atol(config->misc->log_num.value);
 
-	/* install kmsg configs */
-	if (!strcmp(config->kmsg->is_enable.value, "yes"))
-		logwatch->is_enable_kmsg = 1;
-	else
-		logwatch->is_enable_kmsg = 0;
+    /* install kmsg configs */
+    if (!strcmp(config->kmsg->is_enable.value, "yes"))
+        logwatch->is_enable_kmsg = 1;
+    else
+        logwatch->is_enable_kmsg = 0;
 
-	logwatch->kmsg_size = atol(config->kmsg->fifo_size.value);
-	logwatch->kmsg_prior = atol(config->kmsg->prior.value);
+    logwatch->kmsg_size = atol(config->kmsg->fifo_size.value);
+    logwatch->kmsg_prior = atol(config->kmsg->prior.value);
 
-	/* install logcat configs*/
-	if (!strcmp(config->logcat->is_enable.value, "yes"))
-		logwatch->is_enable_logcat = 1;
-	else
-		logwatch->is_enable_logcat = 0;
+    /* install logcat configs*/
+    if (!strcmp(config->logcat->is_enable.value, "yes"))
+        logwatch->is_enable_logcat = 1;
+    else
+        logwatch->is_enable_logcat = 0;
 
-	logwatch->logcat_size = atol(config->logcat->fifo_size.value);
-	logwatch->logcat_prior = atoi(config->logcat->prior.value);
+    logwatch->logcat_size = atol(config->logcat->fifo_size.value);
+    logwatch->logcat_prior = atoi(config->logcat->prior.value);
 }
-
 
 static void install_default_config(struct logwatch_data* logwatch) {
-	LOGW("Installing default configuration.");
+    LOGW("Installing default configuration.");
 
-	logwatch->is_enable_logwatch = LOGWATCH_ENABLE_DEF;
-	logwatch->boot_delay = BOOT_DELAY_DEF;
-	logwatch->log_path = strdup(LOG_PATH_DEF);
-	logwatch->log_num = LOG_NUM_DEF;
+    logwatch->is_enable_logwatch = LOGWATCH_ENABLE_DEF;
+    logwatch->boot_delay = BOOT_DELAY_DEF;
+    logwatch->log_path = strdup(LOG_PATH_DEF);
+    logwatch->log_num = LOG_NUM_DEF;
 
-	logwatch->is_enable_kmsg = KMSG_ENABLE_DEF;
-	logwatch->kmsg_size = KMSG_SIZE_DEF;
-	logwatch->kmsg_prior = KMSG_PRIOR_DEF;
+    logwatch->is_enable_kmsg = KMSG_ENABLE_DEF;
+    logwatch->kmsg_size = KMSG_SIZE_DEF;
+    logwatch->kmsg_prior = KMSG_PRIOR_DEF;
 
-	logwatch->is_enable_logcat = LOGCAT_ENABLE_DEF;
-	logwatch->logcat_size = LOGCAT_SIZE_DEF;
-	logwatch->logcat_prior = LOGCAT_PRIOR_DEF;
+    logwatch->is_enable_logcat = LOGCAT_ENABLE_DEF;
+    logwatch->logcat_size = LOGCAT_SIZE_DEF;
+    logwatch->logcat_prior = LOGCAT_PRIOR_DEF;
 }
 
-
 static int parse_configure(FILE * stream, struct config *config) {
-	char buf[256] = {0};
-	char *pos = NULL;
-	int line = 0;
-	int errors = 0;
+    char buf[256] = { 0 };
+    char *pos = NULL;
+    int line = 0;
+    int errors = 0;
 
-	while (get_line(buf, sizeof(buf), stream, &line, &pos)) {
-		if (!strcmp(pos, "misc={")) {
-			config->misc = read_misc_config(stream, &line);
-			if (!config->misc) {
-				LOGE("Failed to read misc configure.");
-				errors++;
-				break;
-			}
-		} else if (!strcmp(pos, "kmsg={")) {
-			config->kmsg = read_kmsg_config(stream, &line);
-			if (!config->kmsg) {
-				LOGE("Failed to read kmsg configure.");
-				errors++;
-				break;
-			}
-		} else if (!strcmp(pos, "logcat={")) {
-			config->logcat = read_logcat_config(stream, &line);
-			if (!config->logcat) {
-				LOGE("Failed to read logcat configure.");
-				errors++;
-				break;
-			}
-		} else {
-			LOGE("Failed to parse line: %d: Unrecognized line.", line);
-			break;
-		}
-	}
+    while (get_line(buf, sizeof(buf), stream, &line, &pos)) {
+        if (!strcmp(pos, "misc={")) {
+            config->misc = read_misc_config(stream, &line);
+            if (!config->misc) {
+                LOGE("Failed to read misc configure.");
+                errors++;
+                break;
+            }
+        } else if (!strcmp(pos, "kmsg={")) {
+            config->kmsg = read_kmsg_config(stream, &line);
+            if (!config->kmsg) {
+                LOGE("Failed to read kmsg configure.");
+                errors++;
+                break;
+            }
+        } else if (!strcmp(pos, "logcat={")) {
+            config->logcat = read_logcat_config(stream, &line);
+            if (!config->logcat) {
+                LOGE("Failed to read logcat configure.");
+                errors++;
+                break;
+            }
+        } else {
+            LOGE("Failed to parse line: %d: Unrecognized line.", line);
+            break;
+        }
+    }
 
-	if (errors)
-		return -1;
+    if (errors)
+        return -1;
 
-	return 0;
+    return 0;
 }
 
 static FILE* open_file(const char* file_name) {
-	if (!file_name)
-		return NULL;
+    if (!file_name)
+        return NULL;
 
-	return fopen(file_name, "r");
+    return fopen(file_name, "r");
 }
 
 int load_configure(const char* file_name, struct logwatch_data* logwatch) {
-	FILE* stream = NULL;
-	int retval = 0;
-	struct config *config = NULL;
+    FILE* stream = NULL;
+    int retval = 0;
+    struct config *config = NULL;
 
-	config = (struct config *)malloc(sizeof(struct config));
-	memset(config, 0, sizeof(struct config));
+    config = (struct config *) malloc(sizeof(struct config));
+    memset(config, 0, sizeof(struct config));
 
-	if (!(stream = open_file(file_name))) {
-		LOGE("Failed to open file: %s :%s.\n", file_name, strerror(errno));
-		goto error;
-	}
+    if (!(stream = open_file(file_name))) {
+        LOGE("Failed to open file: %s :%s.\n", file_name, strerror(errno));
+        goto error;
+    }
 
-	retval = parse_configure(stream, config);
-	if (retval < 0) {
-		LOGE("Failed to parse configuration.");
-		goto error;
-	}
+    retval = parse_configure(stream, config);
+    if (retval < 0) {
+        LOGE("Failed to parse configuration.");
+        goto error;
+    }
 
 #ifdef DEBUG
-	dump_config(config);
+    dump_config(config);
 #endif
 
-	install_config(config, logwatch);
+    install_config(config, logwatch);
 
-	if (config)
-		free(config);
+    if (config)
+        free(config);
 
-	return fclose(stream);
+    return fclose(stream);
 
 error:
-	if (config)
-		free(config);
-	install_default_config(logwatch);
-	if (stream)
-		return fclose(stream);
-	else
-		return -1;
+    if (config)
+        free(config);
+    install_default_config(logwatch);
+    if (stream)
+        return fclose(stream);
+    else
+        return -1;
 }

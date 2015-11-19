@@ -39,62 +39,70 @@
 
 #define CONFIG_FILE "/system/etc/logwatch.conf"
 #define LOG_FOLDER "ingenic-log"
+#define KERNEL_LOG_NAME "kmsg.txt"
+#define LOGCAT_LOG_NAME "logcat.txt"
 
-struct object {
-	const char		*name;
-	char			*value;
+struct object
+{
+    const char *name;
+    char *value;
 };
 
-struct logcat {
-	struct object	is_enable;
-	struct object	fifo_size;
-	struct object	prior;
+struct logcat
+{
+    struct object is_enable;
+    struct object fifo_size;
+    struct object prior;
 };
 
-struct kmsg {
-	struct object	is_enable;
-	struct object	fifo_size;
-	struct object	prior;
+struct kmsg
+{
+    struct object is_enable;
+    struct object fifo_size;
+    struct object prior;
 };
 
-struct misc {
-	struct object	enable;
-	struct object	delay;
-	struct object	log_path;
-	struct object	log_num;
+struct misc
+{
+    struct object enable;
+    struct object delay;
+    struct object log_path;
+    struct object log_num;
 };
 
-struct config {
-	struct misc		*misc;
-	struct kmsg		*kmsg;
-	struct logcat	*logcat;
+struct config
+{
+    struct misc *misc;
+    struct kmsg *kmsg;
+    struct logcat *logcat;
 };
 
-struct logwatch_data {
-	int		is_enable_logwatch;
+struct logwatch_data
+{
+    int is_enable_logwatch;
 #define LOGWATCH_ENABLE_DEF	1
 
-	int boot_delay;
+    int boot_delay;
 #define BOOT_DELAY_DEF	0
 
-	char*	log_path;
+    char* log_path;
 #define	LOG_PATH_DEF	"/data"
 
-	int		log_num;
+    int log_num;
 #define LOG_NUM_DEF		2
 
-	pthread_attr_t attr;
-	char* cur_log_path;
+    pthread_attr_t attr;
+    char* cur_log_path;
 
-	int		kmsg_fd;
-	pthread_t	kmsg_pid;
-	int		is_enable_kmsg;
+    int kmsg_fd;
+    pthread_t kmsg_pid;
+    int is_enable_kmsg;
 #define KMSG_ENABLE_DEF	1
 
-	unsigned long	kmsg_size;
+    unsigned long kmsg_size;
 #define KMSG_SIZE_DEF (1024)
 
-	int		kmsg_prior;
+    int kmsg_prior;
 #define KERN_EMERG		0
 #define KERN_ALERT		1
 #define KERN_CRIT		2
@@ -105,15 +113,15 @@ struct logwatch_data {
 #define KERN_DEBUG		7
 #define KMSG_PRIOR_DEF	KERN_DEBUG
 
-	pthread_t	logcat_pid;
-	int		logcat_fd;
-	int 	is_enable_logcat;
+    pthread_t logcat_pid;
+    int logcat_fd;
+    int is_enable_logcat;
 #define LOGCAT_ENABLE_DEF	1
 
-	unsigned long logcat_size;
+    unsigned long logcat_size;
 #define LOGCAT_SIZE_DEF	(1024)
 
-	int 	logcat_prior;
+    int logcat_prior;
 #define	LOGCAT_VERBOSE	6
 #define LOGCAT_DEBUG	5
 #define	LOGCAT_INFO		4
