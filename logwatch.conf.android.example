@@ -1,0 +1,62 @@
+ #
+ #  Copyright (C) 2013, Zhang YanMing <jamincheung@126.com>
+ #
+ #  ingenic log record tool
+ #
+ #  This program is free software; you can redistribute it and/or modify it
+ #  under  the terms of the GNU General  Public License as published by the
+ #  Free Software Foundation;  either version 2 of the License, or (at your
+ #  option) any later version.
+ #
+ #  You should have received a copy of the GNU General Public License along
+ #  with this program; if not, write to the Free Software Foundation, Inc.,
+ #  675 Mass Ave, Cambridge, MA 02139, USA.
+ #
+ #
+
+misc={
+
+#开启/关闭应用
+	enable=yes
+
+#延时启动,单位毫秒
+	delay=0
+
+#配置系统log路径，指定一个默认为可读写的分区,不确定则使用/data,如果指定分区不可写，软件将
+#在/data/分区默认建立ingenic-log目录存放log
+	log_path=/data
+
+#配置保存log的数量
+	log_num=2
+}
+
+kmsg={
+
+#是否记录内核log:yes or no
+	is_enable=yes
+
+#参数目前不支持
+	fifo_size=0
+
+#参数目前不支持
+	prior=6
+}
+
+logcat={
+
+#是否开启logcat:yes or no
+	is_enable=yes
+
+#参数目前不支持
+	fifo_size=0
+
+#logcat输出等级
+#  V(6)    Verbose
+#  D(5)    Debug
+#  I(4)    Info
+#  W(3)    Warn
+#  E(2)    Error
+#  F(1)    Fatal
+#  S(0)    Silent (supress all output)
+	prior=2
+}

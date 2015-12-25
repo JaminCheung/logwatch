@@ -27,16 +27,19 @@
 #include <sys/klog.h>
 #include <sys/wait.h>
 #include <signal.h>
+
+#ifdef SUPPORT_ANDROID
 #include <android/log.h>
 #include <cutils/log.h>
-#ifdef LOG_TAG
+#endif
+
 #undef LOG_TAG
 #ifdef COLOR
 #define LOG_TAG "\e[0;91mlogwatch--->logwatch\e[0m"
 #else
 #define LOG_TAG "logwatch--->logwatch"
 #endif
-#endif
+
 #include "logwatch.h"
 #include "configure.h"
 
@@ -207,13 +210,11 @@ static int init_work(struct logwatch_data* logwatch) {
     if (folder_array)
         free(folder_array);
 
-#if DEBUG
     LOGD("===================================");
     LOGD("Dump exist log.");
     for (i = 0; i < log_count; i++)
     LOGD("%s\n", log_array[i]);
     LOGD("===================================");
-#endif
 
     /*
      * get serial number from log file name
@@ -253,7 +254,6 @@ static int init_work(struct logwatch_data* logwatch) {
         i--;
     }
 
-#if DEBUG
     LOGD("===================================");
     LOGD("Dump sorted log.");
     for (i = 0; i < log_count; i++) {
@@ -265,7 +265,6 @@ static int init_work(struct logwatch_data* logwatch) {
         free(buf);
     }
     LOGD("===================================");
-#endif
 
     /*
      * delete old log base serial number
@@ -579,10 +578,6 @@ int main(int argc, char* argv[]) {
         msleep(logwatch_data->boot_delay);
     }
 
-#ifdef DEBUG
-    //dump_logwatch_data(logwatch_data);
-#endif
-
     retval = init_work(logwatch_data);
     if (retval < 0) {
         LOGE("Failed to init work...Abort.");
@@ -595,7 +590,7 @@ int main(int argc, char* argv[]) {
         abort();
     }
 
-    LOGW("\e[0;91mI'm ready...Let's go!\e[0m");
+    LOGI("\e[0;91mI'm ready...Let's go!\e[0m");
 
     while (1) {
         sleep(1000);

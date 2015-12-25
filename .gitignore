@@ -1,3 +1,6 @@
 .cproject
 .project
 install/
+*.o
+*.o.d
+logwatch

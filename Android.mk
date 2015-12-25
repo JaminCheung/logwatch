@@ -24,6 +24,8 @@ LOCAL_SRC_FILES := \
 
 LOCAL_MODULE := logwatch
 
+LOCAL_CFLAGS += -DSUPPORT_ANDROID
+
 ##########################
 # enable it open debug
 ##########################

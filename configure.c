@@ -24,16 +24,19 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <pthread.h>
+
+#ifdef SUPPORT_ANDROID
 #include <android/log.h>
 #include <cutils/log.h>
-#ifdef LOG_TAG
+#endif
+
 #undef LOG_TAG
 #ifdef COLOR
 #define LOG_TAG "\e[0;91mlogwatch--->configure\e[0m"
 #else
 #define LOG_TAG "logwatch--->configure"
 #endif
-#endif
+
 #include "logwatch.h"
 
 static void dump_config(struct config *config) {
@@ -110,9 +113,7 @@ static char* get_line(char *s, int size, FILE* stream, int* line, char** _pos) {
         if (_pos)
             *_pos = pos;
 
-#ifdef DEBUG
         LOGD("Line %d: %s", *line, *_pos);
-#endif
 
         return pos;
     }
@@ -371,7 +372,12 @@ static struct logcat* read_logcat_config(FILE* stream, int* line) {
 
     config = (struct logcat *) malloc(sizeof(struct logcat));
     config->is_enable.name = strdup("Enable logcat");
+
+#ifdef SUPPORT_ANDROID
     config->is_enable.value = is_enable;
+#else
+    config->is_enable.value = "no";
+#endif
 
     config->fifo_size.name = strdup("Logcat log buffer size");
     config->fifo_size.value = fifo_size;
@@ -505,9 +511,8 @@ int load_configure(const char* file_name, struct logwatch_data* logwatch) {
         goto error;
     }
 
-#ifdef DEBUG
+
     dump_config(config);
-#endif
 
     install_config(config, logwatch);
 

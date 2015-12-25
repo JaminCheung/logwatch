@@ -17,12 +17,26 @@
 #ifndef LOGWATCH_H_
 #define LOGWATCH_H_
 
+#ifdef DEBUG
+#define DEBUG_TRACE 1
+#else
+#define DEBUG_TRACE 0
+#endif
+
+#ifdef SUPPORT_ANDROID
+
 #ifndef LOGV
 #define LOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, __VA_ARGS__)
 #endif
 
+#ifdef DEBUG
 #ifndef LOGD
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG , LOG_TAG, __VA_ARGS__)
+#endif
+#else
+#define LOGD(...)   \
+    do {            \
+    } while (0)
 #endif
 
 #ifndef LOGI
@@ -37,7 +51,68 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR , LOG_TAG, __VA_ARGS__)
 #endif
 
-#define CONFIG_FILE "/system/etc/logwatch.conf"
+#else
+
+#define LOGV(...)                                   \
+    do {                                            \
+      int save_errno = errno;                       \
+      fprintf(stderr, "V/%s:", LOG_TAG);            \
+      errno = save_errno;                           \
+      fprintf(stderr, __VA_ARGS__);                 \
+      fprintf(stderr, "\n");                        \
+      fflush(stderr);                               \
+      errno = save_errno;                           \
+    } while (0)
+
+#define LOGD(...)                                   \
+    do {                                            \
+      if (DEBUG_TRACE) {                            \
+          int save_errno = errno;                   \
+          fprintf(stderr, "D/%s:", LOG_TAG);        \
+          errno = save_errno;                       \
+          fprintf(stderr, __VA_ARGS__);             \
+          fprintf(stderr, "\n");                    \
+          fflush(stderr);                           \
+          errno = save_errno;                       \
+      }                                             \
+    } while (0)
+
+#define LOGI(...)                                   \
+    do {                                            \
+      int save_errno = errno;                       \
+      fprintf(stderr, "I/%s:", LOG_TAG);            \
+      errno = save_errno;                           \
+      fprintf(stderr, __VA_ARGS__);                 \
+      fprintf(stderr, "\n");                        \
+      fflush(stderr);                               \
+      errno = save_errno;                           \
+    } while (0)
+
+#define LOGW(...)                                   \
+    do {                                            \
+      int save_errno = errno;                       \
+      fprintf(stderr, "W/%s:", LOG_TAG);            \
+      errno = save_errno;                           \
+      fprintf(stderr, __VA_ARGS__);                 \
+      fprintf(stderr, "\n");                        \
+      fflush(stderr);                               \
+      errno = save_errno;                           \
+    } while (0)
+
+#define LOGE(...)                                   \
+    do {                                            \
+      int save_errno = errno;                       \
+      fprintf(stderr, "W/%s:", LOG_TAG);            \
+      errno = save_errno;                           \
+      fprintf(stderr, __VA_ARGS__);                 \
+      fprintf(stderr, "\n");                        \
+      fflush(stderr);                               \
+      errno = save_errno;                           \
+    } while (0)
+
+#endif
+
+#define CONFIG_FILE "/etc/logwatch.conf"
 #define LOG_FOLDER "ingenic-log"
 #define KERNEL_LOG_NAME "kmsg.txt"
 #define LOGCAT_LOG_NAME "logcat.txt"
@@ -86,7 +161,12 @@ struct logwatch_data
 #define BOOT_DELAY_DEF	0
 
     char* log_path;
+
+#ifdef SUPPORT_ANDROID
 #define	LOG_PATH_DEF	"/data"
+#else
+#define LOG_PATH_DEF    "/var"
+#endif
 
     int log_num;
 #define LOG_NUM_DEF		2
@@ -116,8 +196,11 @@ struct logwatch_data
     pthread_t logcat_pid;
     int logcat_fd;
     int is_enable_logcat;
+#ifdef SUPPORT_ANDROID
 #define LOGCAT_ENABLE_DEF	1
-
+#else
+#define LOGCAT_ENABLE_DEF   0
+#endif
     unsigned long logcat_size;
 #define LOGCAT_SIZE_DEF	(1024)
 
