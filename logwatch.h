@@ -154,6 +154,7 @@ struct config
 
 struct logwatch_data
 {
+    mode_t file_mode;
     int is_enable_logwatch;
 #define LOGWATCH_ENABLE_DEF	1
 

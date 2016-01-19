@@ -43,6 +43,8 @@
 #include "logwatch.h"
 #include "configure.h"
 
+static struct logwatch_data *logwatch_data;
+
 const char* const logcat_priority[] = { "S", "F", "E", "W", "I", "D", "V" };
 
 static void dump_logwatch_data(struct logwatch_data* logwatch) {
@@ -143,7 +145,7 @@ static int init_work(struct logwatch_data* logwatch) {
         LOGW("\"%s/%s\" already exist.", logwatch->log_path, LOG_FOLDER);
     } else {
         retval = mkdir(LOG_FOLDER,
-                S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IROTH);
+                S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
         if (retval < 0) {
             LOGE("Failed to create system log folder: %s.", strerror(errno));
             return -1;
@@ -290,7 +292,7 @@ static int init_work(struct logwatch_data* logwatch) {
             serial_int_array[0] + 1, ptime->tm_year + 1900, ptime->tm_mon + 1,
             ptime->tm_mday, ptime->tm_hour, ptime->tm_min, ptime->tm_sec);
 
-    retval = mkdir(buf, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IROTH);
+    retval = mkdir(buf, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
     if (retval < 0) {
         LOGE("Failed to create log %s: %s.", buf, strerror(errno));
         return -1;
@@ -538,6 +540,10 @@ static int do_work(struct logwatch_data* logwatch) {
 }
 
 static void signal_handler(int signum) {
+    LOGW("\e[0;91mI was interrupted...Bye!\e[0m");
+
+    umask(logwatch_data->file_mode);
+
     int errno_save = errno;
 //TODO:fix me
     abort();
@@ -559,8 +565,6 @@ static void register_signal_handler() {
 int main(int argc, char* argv[]) {
     int retval;
 
-    struct logwatch_data *logwatch_data;
-
     logwatch_data = (struct logwatch_data *) malloc(
             sizeof(struct logwatch_data));
 
@@ -578,16 +582,18 @@ int main(int argc, char* argv[]) {
         msleep(logwatch_data->boot_delay);
     }
 
+    logwatch_data->file_mode = umask(0000);
+
     retval = init_work(logwatch_data);
     if (retval < 0) {
         LOGE("Failed to init work...Abort.");
-        abort();
+        goto abort;
     }
 
     retval = do_work(logwatch_data);
     if (retval < 0) {
         LOGE("Faild to do_work...Abort.");
-        abort();
+        goto abort;
     }
 
     LOGI("\e[0;91mI'm ready...Let's go!\e[0m");
@@ -595,5 +601,10 @@ int main(int argc, char* argv[]) {
     while (1) {
         sleep(1000);
     }
+
     return 0;
+
+abort:
+    umask(logwatch_data->file_mode);
+    abort();
 }
