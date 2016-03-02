@@ -15,6 +15,8 @@
 #
 
 CC = mips-linux-gnu-gcc
+OBJDIR = obj/
+TARDIR = install/
 AM_CFLAGS = -DDEBUG
 CFLAGS ?= -g -O2 -static
 CHECKFLAGS = -Wall -Wuninitialized -Wundef
@@ -36,6 +38,10 @@ logwatch: $(objects)
 	$(CC) $(CFLAGS) -o $@ $(objects) $(LDFLAGS) $(LIBS)
 
 clean:
-	rm -f $(progs) $(objects)
+	rm -rf $(progs) $(objects) $(TARDIR)
 
 .PHONY: all clean
+
+install:
+	mkdir -p $(TARDIR);
+	mv -v $(progs) $(TARDIR);

@@ -23,7 +23,7 @@ LOCAL_SRC_FILES := \
 	configure.c \
 
 LOCAL_MODULE := logwatch
-LOCAL_MODULE_PATH := install
+LOCAL_MODULE_PATH := $(LOCAL_PATH)/install
 
 LOCAL_CFLAGS += -DSUPPORT_ANDROID
 
