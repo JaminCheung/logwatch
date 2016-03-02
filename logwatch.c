@@ -472,7 +472,7 @@ static void* start_watch_logcat(void *param) {
     struct logwatch_data* logwatch = (struct logwatch_data *) param;
     char* buf = NULL;
 
-    asprintf(&buf, "logcat -v time *:%s > %s",
+    asprintf(&buf, "logcat -v threadtime *:%s > %s",
             logcat_priority[logwatch->logcat_prior], LOGCAT_LOG_NAME);
 
     for (;;) {
