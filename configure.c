@@ -475,6 +475,7 @@ static int parse_configure(FILE * stream, struct config *config) {
             }
         } else {
             LOGE("Failed to parse line: %d: Unrecognized line.", line);
+            errors++;
             break;
         }
     }
